@@ -1,0 +1,38 @@
+
+.person {
+  display: flex;
+  position: absolute;
+  width: fit-content;
+  height: 60px;
+  padding: 20px;
+  border-radius: 15px;
+  background-color: rgb(129, 255, 129);
+  user-select: none;
+  align-items: center;
+}
+
+.options {
+  display: grid;
+  position: absolute;
+  width: 140px;
+  border-radius: 15px;
+  overflow: hidden;
+  height: 165px;
+  grid-template-rows: 55px 55px 55px;
+  transform: translate(var(--x), var(--y)) translate(-50%, -50%);
+  animation-name: options-animation;
+  animation-duration: 0.5s;
+}
+
+@keyframes options-animation {
+  from {
+    transform: translate(var(--x), var(--y)) translate(-50%, -50%) translateX(calc(var(--left) * 150px)) scale(0)
+  }
+}
+
+.person input {
+  text-align: center;
+  field-sizing: content;
+  border: none;
+  outline: none;
+}

@@ -1,0 +1,18 @@
+# Python bytecode (covers every __pycache__ directory)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Django local settings and databases
+db.sqlite3
+*.log
+local_settings.py
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Editor and system settings
+.vscode/
