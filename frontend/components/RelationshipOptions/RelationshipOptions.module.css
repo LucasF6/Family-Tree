@@ -1,0 +1,32 @@
+
+.options {
+  display: grid;
+  position: absolute;
+  width: 140px;
+  height: fit-content;
+  border-radius: 15px;
+  overflow: hidden;
+  transform: translate(var(--x), var(--y)) translate(-50%, -50%)
+}
+
+.playAnimationLeft {
+  animation-name: animationLeft;
+  animation-duration: 0.5s;
+}
+
+.playAnimationRight { 
+  animation-name: animationRight;
+  animation-duration: 0.5s;
+}
+
+@keyframes animationLeft {
+  from {
+    transform: translate(var(--x), var(--y)) translate(-50%, -50%) translateX(150px) scale(0)
+  }
+}
+
+@keyframes animationRight {
+  from {
+    transform: translate(var(--x), var(--y)) translate(-50%, -50%) translateX(-150px) scale(0)
+  }
+}

@@ -17,8 +17,8 @@
   width: 140px;
   border-radius: 15px;
   overflow: hidden;
-  height: 165px;
-  grid-template-rows: 55px 55px 55px;
+  height: fit-content;
+  grid-template-rows: 1fr 1fr 1fr;
   transform: translate(var(--x), var(--y)) translate(-50%, -50%);
   animation-name: options-animation;
   animation-duration: 0.5s;
