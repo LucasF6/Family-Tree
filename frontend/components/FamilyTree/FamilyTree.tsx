@@ -4,13 +4,14 @@ import styles from "./FamilyTree.module.css"
 import { useState, useRef, useEffect } from "react";
 import Person from "@/components/Person";
 import { PointerEvent } from "react";
-import { Connection } from "@/types";
+import { Connection, ConnectionSet } from "@/types";
 import ErrorMessage from "@/components/ErrorMessage";
 import { v4 as uuid } from 'uuid'
 import Relationship from "../Relationship";
 import PersonNamer from "@/components/PersonNamer";
-
-type FamilyTreeMode = "dragging" | "connecting" | "naming" | "options"
+import PersonLocationChooser from "../PersonLocationChooser";
+import Overlay from "../Overlay";
+import { FamilyTreeMode } from "@/types";
 
 type PersonType = {
   name: string;
@@ -96,6 +97,7 @@ export default function FamilyTree() {
   const [people, setPeople] = useState<People>(defaultPeople)
   const [relationships, setRelationships] = useState<RelationshipType[]>([])
   const isDragging = useRef(false)
+  const mousePosition = useRef({x: 0, y: 0})
   const [screenPosition, setScreenPosition] = useState({x: 0, y: 0})
   const [dragOffset, setDragOffset] = useState({x: 0, y: 0})
   const [newPersonPosition, setNewPersonPosition] = useState({x: 0, y: 0})
@@ -105,78 +107,68 @@ export default function FamilyTree() {
   const [newPersonConnection, setNewPersonConnection] = useState<Connection>("partner")
   const [errorMessage, setErrorMessage] = useState("")
   const [errorMessageKey, setErrorMessageKey] = useState("")
-
-  let newPersonConnectionPath;
-  if (mode === "naming" && personConnecting) {
-    switch (newPersonConnection) {
-      case "parent":
-        newPersonConnectionPath = 
-          `
-            M ${personConnecting.positionX + screenPosition.x} ${personConnecting.positionY + screenPosition.y - 30}
-            C ${personConnecting.positionX + screenPosition.x} ${personConnecting.positionY + screenPosition.y - 30 - 50},
-              ${newPersonPosition.x + screenPosition.x} ${newPersonPosition.y + screenPosition.y + 30 + 50},
-              ${newPersonPosition.x + screenPosition.x} ${newPersonPosition.y + screenPosition.y + 30}
-          `
-        break
-      case "partner":
-        newPersonConnectionPath = personConnecting.positionX >= newPersonPosition.x
-        ? `
-            M ${personConnecting.positionX + screenPosition.x - personConnecting.width / 2} ${personConnecting.positionY + screenPosition.y}
-            C ${personConnecting.positionX + screenPosition.x - personConnecting.width / 2 - 50} ${personConnecting.positionY + screenPosition.y},
-              ${newPersonPosition.x + screenPosition.x + newPersonWidth / 2 + 50} ${newPersonPosition.y + screenPosition.y},
-              ${newPersonPosition.x + screenPosition.x + newPersonWidth / 2} ${newPersonPosition.y + screenPosition.y}
-            `
-        : `
-            M ${personConnecting.positionX + screenPosition.x + personConnecting.width / 2} ${personConnecting.positionY + screenPosition.y}
-            C ${personConnecting.positionX + screenPosition.x + personConnecting.width / 2 + 50} ${personConnecting.positionY + screenPosition.y},
-              ${newPersonPosition.x + screenPosition.x - newPersonWidth / 2 - 50} ${newPersonPosition.y + screenPosition.y},
-              ${newPersonPosition.x + screenPosition.x - newPersonWidth / 2} ${newPersonPosition.y + screenPosition.y}
-          `
-        break
-        case "child":
-        newPersonConnectionPath = 
-          `
-            M ${personConnecting.positionX + screenPosition.x} ${personConnecting.positionY + screenPosition.y + 30}
-            C ${personConnecting.positionX + screenPosition.x} ${personConnecting.positionY + screenPosition.y + 30 + 50},
-              ${newPersonPosition.x + screenPosition.x} ${newPersonPosition.y + screenPosition.y - 30 - 50},
-              ${newPersonPosition.x + screenPosition.x} ${newPersonPosition.y + screenPosition.y - 30}
-          `
-        break
-    }
+  const ref = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(0)
+  const [height, setHeight] = useState(0)
+  const [includeConnections, setIncludeConnections] = useState<ConnectionSet | null>()
+  
+  const newPersonData = {
+    positionX: newPersonPosition.x,
+    positionY: newPersonPosition.y,
+    width: newPersonWidth
   }
-
+  
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        setMode("dragging")
-        setNewPersonWidth(80)
-        setNewPersonConnection("partner")
-        setPeople(prev => (
-          {
-            ...prev,
-            byId: Object.fromEntries(prev.ids.map(personId => ([personId, {
-              ...prev.byId[personId],
-              mode: "draggable"
-            }])))
-          }
-        ))
+        if (mode === "connecting" || mode === "naming" || mode === "options") {
+          setMode("dragging")
+          setNewPersonWidth(80)
+          setNewPersonConnection("partner")
+          setPeople(prev => (
+            {
+              ...prev,
+              byId: Object.fromEntries(prev.ids.map(personId => ([personId, {
+                ...prev.byId[personId],
+                mode: "draggable"
+              }])))
+            }
+          ))
+        }
+      } else if (e.key === "c") {
+        if (mode === "dragging" || mode === "options") {
+          startAddingNewPerson()
+        }
       }
     }
-
-    if (mode === "connecting" || mode === "naming" || mode === "options") {
+    
+    if (mode !== "disabled") {
       document.addEventListener('keydown', handleKeyDown)
     }
-
+    
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [mode])
 
+  useEffect(() => {
+    if (!ref.current) return
+
+    const observer = new ResizeObserver(([entry]) => {
+      setWidth(entry.contentRect.width)
+      setHeight(entry.contentRect.height)
+    })
+
+    observer.observe(ref.current)
+
+    return () => observer.disconnect()
+  }, [])
+  
   function updateErrorMessage(message: string) {
     setErrorMessage(message)
     setErrorMessageKey(uuid())
   }
-
+  
   function handleClick(index: number) {
     setPeople(prev => ({
       ...prev,
@@ -187,7 +179,7 @@ export default function FamilyTree() {
       ]
     }))
   }
-
+  
   function handleOptions(id: string) {
     if (people.byId[id].mode === "draggable") {
       setPeople(prev => ({
@@ -215,7 +207,7 @@ export default function FamilyTree() {
       setMode("dragging")
     }
   }
-
+  
   function handleConnect(personId: string, clientX: number, clientY: number) {
     if (mode !== "connecting") {
       setMode("connecting")
@@ -228,12 +220,31 @@ export default function FamilyTree() {
       }))
       setPersonConnecting(people.byId[personId])
       setNewPersonPosition({
-        x: clientX,
-        y: clientY
+        x: clientX - screenPosition.x,
+        y: clientY - screenPosition.y
       })
-    } else {
-      
     }
+  }
+  
+  function startAddingNewPerson() {
+    setMode("connecting")
+    setPeople(prev => ({
+      ...prev,
+      byId: Object.fromEntries(prev.ids.map(id => [id, {
+        ...prev.byId[id],
+        mode: "disabled"
+      }]))
+    }))
+    setPersonConnecting(null)
+    setNewPersonPosition({
+      x: mousePosition.current.x - screenPosition.x,
+      y: mousePosition.current.y - screenPosition.y
+    })
+    setNewPersonConnection("none")
+  }
+
+  function handleAddPersonFromRelationship(relationshipId: string) {
+    console.log(relationshipId)
   }
 
   function handleUpdatePosition(id: string, x: number, y: number) {
@@ -263,6 +274,7 @@ export default function FamilyTree() {
     }))
   }
 
+
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
     if (mode === "dragging" || mode === "naming") {
       isDragging.current = true
@@ -289,6 +301,12 @@ export default function FamilyTree() {
       // setNewPersonRelationshipPossibilitiesLeft(e.clientX < ref.current.getBoundingClientRect().width / 2)
       if (!personConnecting) return
       setNewPersonRelationshipPossibilitiesLeft(e.clientX >= personConnecting.positionX + screenPosition.x)
+    
+      if ((people.parentsByChildId[personConnecting.id]?.length || 0) == 2) {
+        setIncludeConnections(["partner", "child"])
+      } else {
+        setIncludeConnections(["parent", "partner", "child"])
+      }
     }
   }
 
@@ -298,6 +316,8 @@ export default function FamilyTree() {
   }
 
   function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
+    mousePosition.current.x = e.clientX
+    mousePosition.current.y = e.clientY
     if (isDragging.current && (mode === "dragging" || mode === "naming")) {
       setScreenPosition({
         x: e.clientX + dragOffset.x,
@@ -305,8 +325,8 @@ export default function FamilyTree() {
       })
     } else if (mode === "connecting") {
       setNewPersonPosition({
-        x: e.clientX,
-        y: e.clientY
+        x: e.clientX - screenPosition.x,
+        y: e.clientY - screenPosition.y
       })
     }
   }
@@ -325,7 +345,6 @@ export default function FamilyTree() {
       return
     }
     let newPerson = createPerson(name, newPersonPosition.x, newPersonPosition.y)
-    if (personConnecting === null) return
     setPeople(prev => {
       const next = {
         ...prev,
@@ -343,11 +362,20 @@ export default function FamilyTree() {
         },
         ids: [...prev.ids, newPerson.id],
       }
+      if (personConnecting === null || connection === "none") {
+        return next
+      }
       switch (connection) {
         case "parent":
           // This part needs to be fixed
           if (prev.parentsByChildId[personConnecting.id]?.length === 2) {
             return prev
+          }
+          next.childrenByParentId = {
+            ...next.childrenByParentId,
+            [newPerson.id]: [
+              personConnecting.id
+            ]
           }
           next.parentsByChildId = {
             ...next.parentsByChildId,
@@ -365,11 +393,24 @@ export default function FamilyTree() {
               newPerson.id
             ]
           }
+          next.parentsByChildId = {
+            ...next.parentsByChildId,
+            [newPerson.id]: [
+              personConnecting.id
+            ]
+          }
           break
+        }
+        return next;
+      });
+      setMode("dragging")
+      // reset values back to defaults
+      setNewPersonWidth(80)
+      setNewPersonConnection("partner")
+      if (personConnecting === null || connection === "none") {
+        return
       }
-      return next;
-    });
-    setRelationships(prev => {
+      setRelationships(prev => {
       let newRelationship: RelationshipType;
       let next = [...prev]
       switch (connection) {
@@ -410,16 +451,10 @@ export default function FamilyTree() {
             child: newPerson.id
           }
           break
-        case "none":
-          return prev
       }
       next.push(newRelationship)
       return next
     })
-    setMode("dragging")
-    // reset values back to defaults
-    setNewPersonWidth(80)
-    setNewPersonConnection("partner")
   }
 
   return (
@@ -428,7 +463,7 @@ export default function FamilyTree() {
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}
-      // ref={ref}
+      ref={ref}
     >
       {relationships.map(relationship => {
         if (relationship.type == "parent-child") {
@@ -440,6 +475,8 @@ export default function FamilyTree() {
               child={people.byId[relationship.child]}
               screenPositionX={screenPosition.x}
               screenPositionY={screenPosition.y}
+              clickable={mode === "dragging" || mode === "options"}
+              onClick={() => handleAddPersonFromRelationship(relationship.id)}
             />
           )
         } else {
@@ -452,41 +489,22 @@ export default function FamilyTree() {
               children={relationship.children.map(child => people.byId[child])}
               screenPositionX={screenPosition.x}
               screenPositionY={screenPosition.y}
+              clickable={mode === "dragging" || mode === "options"}
+              onClick={() => handleAddPersonFromRelationship(relationship.id)}
             />
           )
         }
       })}
       {mode === "connecting" && (
-        <>
-          <div 
-            className={styles["new-person"]}
-            style={{
-              "--x": `${newPersonPosition.x}px`,
-              "--y": `${newPersonPosition.y}px`
-            } as React.CSSProperties}
-          />
-          {personConnecting && (
-            <svg className={styles.connection}>
-              <path stroke="white" strokeWidth="2" fill="none" d=
-                {
-                  newPersonPosition.x >= personConnecting.positionX + screenPosition.x
-                    ? `
-                        M ${personConnecting.positionX + personConnecting.width / 2 + screenPosition.x} ${personConnecting.positionY + screenPosition.y}
-                        C ${personConnecting.positionX + personConnecting.width / 2 + screenPosition.x + 50} ${personConnecting.positionY + screenPosition.y},
-                        ${newPersonPosition.x - 40 - 50} ${newPersonPosition.y},
-                        ${newPersonPosition.x - 40} ${newPersonPosition.y}
-                      `
-                    : `
-                        M ${personConnecting.positionX - personConnecting.width / 2 + screenPosition.x} ${personConnecting.positionY + screenPosition.y}
-                        C ${personConnecting.positionX - personConnecting.width / 2 + screenPosition.x - 50} ${personConnecting.positionY + screenPosition.y},
-                        ${newPersonPosition.x + 40 + 50} ${newPersonPosition.y},
-                        ${newPersonPosition.x + 40} ${newPersonPosition.y}
-                      `
-                }
-              />
-            </svg>
-          )}
-        </>
+        <PersonLocationChooser 
+          screenPositionX={screenPosition.x}
+          screenPositionY={screenPosition.y}
+          newPersonData={newPersonData}
+          isConnected={newPersonConnection !== "none"}
+          personConnectingData={personConnecting}
+          screenWidth={width}
+          screenHeight={height}
+        />
       )}
       {people.ids.map((id, index) => {
         const person = people.byId[id]
@@ -507,21 +525,41 @@ export default function FamilyTree() {
       })}
       {mode === "naming" && (
         <>
-          <svg className={styles.connection}>
-            <path stroke="white" strokeWidth="2" fill="none" d={newPersonConnectionPath} />
-          </svg>
+          {newPersonConnection !== "partner" && newPersonConnection !== "none" && personConnecting && (
+            <Relationship 
+              type="parent-child"
+              parent={newPersonConnection === "parent" ? newPersonData : personConnecting}
+              child={newPersonConnection === "parent" ? personConnecting : newPersonData}
+              screenPositionX={screenPosition.x}
+              screenPositionY={screenPosition.y}
+            />
+          )}
+          {newPersonConnection === "partner" && personConnecting && (
+            <Relationship 
+              type="partner-partner"
+              firstPartner={personConnecting}
+              secondPartner={newPersonData}
+              screenPositionX={screenPosition.x}
+              screenPositionY={screenPosition.y}
+            />
+          )}
           <PersonNamer 
             positionX={newPersonPosition.x + screenPosition.x} 
             positionY={newPersonPosition.y + screenPosition.y}
             onUpdateConnection={handleUpdatePersonNamerConnection}
             onUpdateWidth={handleUpdatePersonNamerWidth}
             onSubmit={handlePersonNamerSubmit}
-            isConnected
+            includeConnections={includeConnections || ["partner"]}
+            isConnected={newPersonConnection !== "none"}
             right={newPersonRelationshipPossibilitiesRight}
           />
         </>
       )}
-
+      <Overlay 
+        disabled={mode !== "dragging" && mode !== "options"}
+        onAddPerson={startAddingNewPerson}
+        helpText={mode}
+      /> 
       <ErrorMessage message={errorMessage} key={errorMessageKey} />
     </div>
   );

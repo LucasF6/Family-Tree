@@ -49,7 +49,7 @@ export default function RelationshipOptions({ positionX, positionY, includeConne
     >
       {includeConnections.map((connection, idx) => (
         <button
-          className={`${connectionColor(connection)} font-mono text-3xl h-13.75`}
+          className={`${connectionColor(connection)} font-mono text-3xl h-13.75 select-none`}
           onClick={() => onClick(connection)}
           onMouseEnter={() => onHover(connection)}
           key={idx}

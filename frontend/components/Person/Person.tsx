@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useLayoutEffect } from "react"
 import { PointerEvent } from "react"
 import styles from "./Person.module.css"
 
@@ -9,9 +9,11 @@ const DRAG_THRESHOLD = 3; // 3px
 /**
  * draggable: the element can be dragged around the screen
  * 
- * start: the first person in a connection of two people
+ * connectable: a possible second person in a connection of two people
  * 
- * end: a possible second person in a connection  of two people
+ * disabled: no functionality
+ * 
+ * options: options buble is popped open
 */
 type PersonProps = {
   name: string;
@@ -47,8 +49,9 @@ export default function Person({ name, positionX, positionY, updatePosition, upd
 
   // Note: this runs everytime the list of people in FamilyTree is re-ordered rather
   // than just when this Person component is initially mounted
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!ref.current) return
+    console.log("layouteffect")
     updateWidth(ref.current.getBoundingClientRect().width)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -154,20 +157,20 @@ function OptionsBubble({ positionX, positionY, onConnect, onEdit, onPage }: Opti
     >
       <div className="grid grid-cols-2">
         <button 
-          className="bg-amber-400 hover:cursor-pointer text-4xl font-mono"
+          className="bg-amber-400 hover:cursor-pointer hover:bg-amber-500 text-4xl font-mono"
           onClick={onEdit}
         >
           Edit
         </button>
         <button 
-          className="bg-orange-400 hover:cursor-pointer text-4xl font-mono"
+          className="bg-blue-400 hover:cursor-pointer hover:bg-blue-500 text-4xl font-mono"
           onClick={onPage}
         >
           Page
         </button>
       </div>
       <button 
-        className="bg-green-400 hover:cursor-pointer text-4xl font-mono"
+        className="bg-green-400 hover:cursor-pointer hover:bg-green-500 text-4xl font-mono"
         onClick={e => onConnect(e.clientX, e.clientY)}
       >
         Connect

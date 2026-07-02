@@ -1,0 +1,37 @@
+
+.locationChooser {
+  transform: translate(var(--x), var(--y)) translate(-50%, -50%);
+  position: absolute;
+  height: 60px;
+  width: 80px;
+  border-radius: 15px;
+  cursor: none;
+}
+
+.playGrowAnimation {
+  animation-name: growAnimation;
+  animation-duration: 0.5s;
+}
+
+.playFromCenterAnimation {
+  animation-name: fromCenterAnimation;
+  animation-duration: 0.75s;
+}
+
+@keyframes growAnimation {
+  from {
+    transform: translate(var(--x), var(--y)) translate(-50%, -50%) scale(0)
+  }
+}
+
+@keyframes fromCenterAnimation {
+  0% {
+    transform: translate(var(--init-x), var(--init-y)) translate(-50%, -50%) scale(0) 
+  }
+  25% {
+    transform: translate(var(--init-x), var(--init-y)) translate(-50%, -50%) scale(2) 
+  }
+  50% {
+    transform: translate(var(--init-x), var(--init-y)) translate(-50%, -50%) scale(1) 
+  }
+}

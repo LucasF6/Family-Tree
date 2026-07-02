@@ -10,20 +10,26 @@ type PersonNamerProps = {
   positionX: number;
   positionY: number;
   isConnected?: boolean;
-  onUpdateConnection: (connection: Connection) => void;
-  onUpdateWidth: (width: number) => void;
+  includeConnections?: [Connection] | [Connection, Connection] | [Connection, Connection, Connection]
+  onUpdateConnection?: (connection: Connection) => void;
+  onUpdateWidth?: (width: number) => void;
   onSubmit: (connection: Connection, name: string) => void;
   right?: boolean;
 }
 
-export default function PersonNamer({ positionX, positionY, isConnected = false, onUpdateConnection, onUpdateWidth, onSubmit, right = false }: PersonNamerProps) {
+export default function PersonNamer({ positionX, positionY, isConnected = false, onUpdateConnection, onUpdateWidth, onSubmit, right = false, includeConnections }: PersonNamerProps) {
   const [name, setName] = useState("")
   const [width, setWidth] = useState(80.02)
+  const [connection, setConnection] = useState<Connection>("partner")
   const ref = useRef<HTMLDivElement>(null)
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter' && !isConnected) {
-      onSubmit("none", name)
+    if (e.key === 'Enter') {
+      if (isConnected) {
+        onSubmit(connection, name)
+      } else {
+        onSubmit("none", name)
+      }
     }
   }
 
@@ -32,18 +38,23 @@ export default function PersonNamer({ positionX, positionY, isConnected = false,
     if (!ref.current) return
     const w = ref.current.getBoundingClientRect().width
     setWidth(w)
-    onUpdateWidth(w)
+    onUpdateWidth?.(w)
+  }
+
+  function handleHover(connection: Connection) {
+    setConnection(connection)
+    onUpdateConnection?.(connection)
   }
 
   return (
     <>
-      {isConnected && (
+      {isConnected && includeConnections && (
         <RelationshipOptions 
           positionX={right ? positionX + width / 2 + 70 + 20 : positionX - width / 2 - 70 - 20}
           positionY={positionY}
-          includeConnections={["parent", "partner", "child"]}
+          includeConnections={includeConnections}
           onClick={connection => onSubmit(connection, name)}
-          onHover={connection => onUpdateConnection(connection)}
+          onHover={handleHover}
           animation={right ? "right" : "left"}
         />
       )}

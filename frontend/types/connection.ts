@@ -1,1 +1,0 @@
-export type Connection = "none" | "child" | "partner" | "parent";
