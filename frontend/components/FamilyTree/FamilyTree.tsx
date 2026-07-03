@@ -4,13 +4,13 @@ import styles from "./FamilyTree.module.css"
 import { useState, useRef, useEffect } from "react";
 import Person from "@/components/Person";
 import { PointerEvent } from "react";
-import { Connection, ConnectionSet } from "@/types";
+import { Connection, ConnectionSet, PersonCardData, RelationshipPathData } from "@/types";
 import ErrorMessage from "@/components/ErrorMessage";
 import { v4 as uuid } from 'uuid'
-import Relationship from "../Relationship";
+import Relationship from "@/components/Relationship";
 import PersonNamer from "@/components/PersonNamer";
-import PersonLocationChooser from "../PersonLocationChooser";
-import Overlay from "../Overlay";
+import PersonLocationChooser from "@/components/PersonLocationChooser";
+import Overlay from "@/components/Overlay";
 import { FamilyTreeMode } from "@/types";
 
 type PersonType = {
@@ -44,10 +44,46 @@ type RelationshipType =
       children: string[]; // Person IDs
     }
 
-let count = 3;
+type EditorState =
+  | {
+      state: "dragging"
+    }
+  | {
+      state: "options"
+    }
+  | {
+      state: "connecting"
+      independent: true
+      newPersonData: PersonCardData
+    }
+  | {
+      state: "connecting"
+      independent: false
+      personConnectingData: PersonCardData
+      personConnectingId: string
+      newPersonData: PersonCardData
+      connection: Exclude<Connection, "none"> // What the new person is to the person being connected
+    }
+  | {
+      state: "naming"
+      independent: true
+      newPersonData: PersonCardData
+    }
+  | {
+      state: "naming"
+      independent: false
+      personConnectingData: PersonCardData
+      personConnectingId: string
+      newPersonData: PersonCardData
+      connection: Exclude<Connection, "none">
+      connectionOptions: ConnectionSet
+      relationshipOptionsOnRight: boolean
+    }
+  | {
+      state: "disabled"
+    }
 
 function createPerson(name: string, initX: number, initY: number) {
-  count++
   return {
     name: name,
     id: uuid(),
@@ -55,76 +91,35 @@ function createPerson(name: string, initX: number, initY: number) {
     positionY: initY,
     mode: "draggable",
     width: 0,
-    parents: [],
-    children: new Map()
   } as PersonType
 }
 
 const defaultPeople = {
-  byId: {
-    "1": {
-      name: "Leonardo da Vinci",
-      id: "1",
-      positionX: 200,
-      positionY: 200,
-      mode: "draggable",
-      width: 0,
-    },
-    "2": {
-      name: "Michelangelo",
-      id: "2",
-      positionX: 300,
-      positionY: 300,
-      mode: "draggable",
-      width: 0,
-    },
-    "3": {
-      name: "Boticelli",
-      id: "3",
-      positionX: 400,
-      positionY: 400,
-      mode: "draggable",
-      width: 0,
-    }
-  },
-  ids: ["1", "2", "3"],
+  byId: {},
+  ids: [],
   parentsByChildId: {},
   childrenByParentId: {}
 } as People
 
 export default function FamilyTree() {
-  const [mode, setMode] = useState<FamilyTreeMode>("dragging")
+  const [editorState, setEditorState] = useState<EditorState>({state: "dragging"})
   const [people, setPeople] = useState<People>(defaultPeople)
   const [relationships, setRelationships] = useState<RelationshipType[]>([])
   const isDragging = useRef(false)
   const mousePosition = useRef({x: 0, y: 0})
   const [screenPosition, setScreenPosition] = useState({x: 0, y: 0})
-  const [dragOffset, setDragOffset] = useState({x: 0, y: 0})
-  const [newPersonPosition, setNewPersonPosition] = useState({x: 0, y: 0})
-  const [personConnecting, setPersonConnecting] = useState<PersonType | null>(null)
-  const [newPersonRelationshipPossibilitiesRight, setNewPersonRelationshipPossibilitiesLeft] = useState(false)
-  const [newPersonWidth, setNewPersonWidth] = useState(80)
-  const [newPersonConnection, setNewPersonConnection] = useState<Connection>("partner")
+  const dragOffset = useRef({x: 0, y: 0}) // This can be a ref
   const [errorMessage, setErrorMessage] = useState("")
   const [errorMessageKey, setErrorMessageKey] = useState("")
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
   const [height, setHeight] = useState(0)
-  const [includeConnections, setIncludeConnections] = useState<ConnectionSet | null>()
-  
-  const newPersonData = {
-    positionX: newPersonPosition.x,
-    positionY: newPersonPosition.y,
-    width: newPersonWidth
-  }
   
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        if (mode === "connecting" || mode === "naming" || mode === "options") {
-          setMode("dragging")
-          setNewPersonWidth(80)
-          setNewPersonConnection("partner")
+        if (["connecting", "naming", "options"].includes(editorState.state)) {
+          setEditorState({state: "dragging"})
           setPeople(prev => (
             {
               ...prev,
@@ -136,20 +131,20 @@ export default function FamilyTree() {
           ))
         }
       } else if (e.key === "c") {
-        if (mode === "dragging" || mode === "options") {
+        if (["dragging", "options"].includes(editorState.state)) {
           startAddingNewPerson()
         }
       }
     }
     
-    if (mode !== "disabled") {
+    if (editorState.state !== "disabled") {
       document.addEventListener('keydown', handleKeyDown)
     }
     
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [mode])
+  }, [editorState.state])
 
   useEffect(() => {
     if (!ref.current) return
@@ -192,7 +187,8 @@ export default function FamilyTree() {
           }
         }
       }))
-      setMode("options")
+      // setMode("options")
+      setEditorState({state: "options"})
     } else if (people.byId[id].mode === "options") {
       setPeople(prev => ({
         ...prev,
@@ -204,13 +200,12 @@ export default function FamilyTree() {
           }
         }
       }))
-      setMode("dragging")
+      setEditorState({state: "dragging"})
     }
   }
   
   function handleConnect(personId: string, clientX: number, clientY: number) {
-    if (mode !== "connecting") {
-      setMode("connecting")
+    if (editorState.state !== "connecting") {
       setPeople(prev => ({
         ...prev,
         byId: Object.fromEntries(prev.ids.map(id => [id, {
@@ -218,16 +213,22 @@ export default function FamilyTree() {
           mode: personId === id ? "disabled" : "connectable"
         }]))
       }))
-      setPersonConnecting(people.byId[personId])
-      setNewPersonPosition({
-        x: clientX - screenPosition.x,
-        y: clientY - screenPosition.y
+      setEditorState({
+        state: "connecting",
+        independent: false,
+        personConnectingId: personId,
+        personConnectingData: people.byId[personId],
+        newPersonData: {
+          positionX: clientX - screenPosition.x,
+          positionY: clientY - screenPosition.y,
+          width: 80
+        },
+        connection: "partner"
       })
     }
   }
   
   function startAddingNewPerson() {
-    setMode("connecting")
     setPeople(prev => ({
       ...prev,
       byId: Object.fromEntries(prev.ids.map(id => [id, {
@@ -235,12 +236,15 @@ export default function FamilyTree() {
         mode: "disabled"
       }]))
     }))
-    setPersonConnecting(null)
-    setNewPersonPosition({
-      x: mousePosition.current.x - screenPosition.x,
-      y: mousePosition.current.y - screenPosition.y
+    setEditorState({
+      state: "connecting",
+      independent: true,
+      newPersonData: {
+        positionX: mousePosition.current.x - screenPosition.x,
+        positionY: mousePosition.current.y - screenPosition.y,
+        width: 80
+      }
     })
-    setNewPersonConnection("none")
   }
 
   function handleAddPersonFromRelationship(relationshipId: string) {
@@ -276,18 +280,14 @@ export default function FamilyTree() {
 
 
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
-    if (mode === "dragging" || mode === "naming") {
+    if (["dragging", "naming"].includes(editorState.state)) {
       isDragging.current = true
       e.currentTarget.setPointerCapture(e.pointerId)
-      setDragOffset({
+      dragOffset.current = {
         x: screenPosition.x - e.clientX,
         y: screenPosition.y - e.clientY
-      })
-    } else if (mode === "connecting") {
-      setNewPersonPosition({
-        x: e.clientX - screenPosition.x,
-        y: e.clientY - screenPosition.y
-      })
+      }
+    } else if (editorState.state === "connecting") {
       setPeople(prev => ({
         ...prev,
         byId: Object.fromEntries(prev.ids.map(id => [id, {
@@ -295,17 +295,29 @@ export default function FamilyTree() {
           mode: "disabled"
         }]))
       }))
-      setMode("naming")
-      // This code puts the options menu to the left/right depending on the side of screen its on
-      // if (!ref.current) return
-      // setNewPersonRelationshipPossibilitiesLeft(e.clientX < ref.current.getBoundingClientRect().width / 2)
-      if (!personConnecting) return
-      setNewPersonRelationshipPossibilitiesLeft(e.clientX >= personConnecting.positionX + screenPosition.x)
-    
-      if ((people.parentsByChildId[personConnecting.id]?.length || 0) == 2) {
-        setIncludeConnections(["partner", "child"])
+      if (editorState.independent) {
+        setEditorState({
+          state: "naming",
+          independent: true,
+          newPersonData: {
+            positionX: e.clientX - screenPosition.x,
+            positionY: e.clientY - screenPosition.y,
+            width: 80
+          },
+        })
       } else {
-        setIncludeConnections(["parent", "partner", "child"])
+        setEditorState({
+          ...editorState,
+          state: "naming",
+          independent: false,
+          newPersonData: {
+            positionX: e.clientX - screenPosition.x,
+            positionY: e.clientY - screenPosition.y,
+            width: 80
+          },
+          relationshipOptionsOnRight: e.clientX >= editorState.personConnectingData.positionX + screenPosition.x,
+          connectionOptions: people.parentsByChildId[editorState.personConnectingId]?.length === 2 ? ["partner", "child"] : ["parent", "partner", "child"],
+        })
       }
     }
   }
@@ -318,25 +330,43 @@ export default function FamilyTree() {
   function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
     mousePosition.current.x = e.clientX
     mousePosition.current.y = e.clientY
-    if (isDragging.current && (mode === "dragging" || mode === "naming")) {
+    if (isDragging.current && ["dragging", "naming"].includes(editorState.state)) {
       setScreenPosition({
-        x: e.clientX + dragOffset.x,
-        y: e.clientY + dragOffset.y
+        x: e.clientX + dragOffset.current.x,
+        y: e.clientY + dragOffset.current.y
       })
-    } else if (mode === "connecting") {
-      setNewPersonPosition({
-        x: e.clientX - screenPosition.x,
-        y: e.clientY - screenPosition.y
+    } else if (editorState.state === "connecting") {
+      setEditorState({
+        ...editorState,
+        newPersonData: {
+          ...editorState.newPersonData,
+          positionX: e.clientX - screenPosition.x,
+          positionY: e.clientY - screenPosition.y
+        }
       })
     }
   }
 
   function handleUpdatePersonNamerConnection(connection: Connection) {
-    setNewPersonConnection(connection)
+    setEditorState(prev => {
+      if (prev.state !== "naming" || prev.independent || connection === "none") return prev
+      return {
+        ...prev,
+        connection
+      }
+    })
   }
 
   function handleUpdatePersonNamerWidth(width: number){
-    setNewPersonWidth(width)
+    if (editorState.state === "connecting" || editorState.state === "naming") {
+      setEditorState({
+        ...editorState,
+        newPersonData: {
+          ...editorState.newPersonData,
+          width
+        }
+      })
+    }
   }
 
   function handlePersonNamerSubmit(connection: Connection, name: string) {
@@ -344,7 +374,10 @@ export default function FamilyTree() {
       updateErrorMessage("Error: Empty text")
       return
     }
-    let newPerson = createPerson(name, newPersonPosition.x, newPersonPosition.y)
+    if (editorState.state !== "naming") {
+      return
+    }
+    let newPerson = createPerson(name, editorState.newPersonData.positionX, editorState.newPersonData.positionY)
     setPeople(prev => {
       const next = {
         ...prev,
@@ -362,25 +395,25 @@ export default function FamilyTree() {
         },
         ids: [...prev.ids, newPerson.id],
       }
-      if (personConnecting === null || connection === "none") {
+      if (editorState.independent) {
         return next
       }
-      switch (connection) {
+      switch (editorState.connection) {
         case "parent":
           // This part needs to be fixed
-          if (prev.parentsByChildId[personConnecting.id]?.length === 2) {
+          if (prev.parentsByChildId[editorState.personConnectingId]?.length === 2) {
             return prev
           }
           next.childrenByParentId = {
             ...next.childrenByParentId,
             [newPerson.id]: [
-              personConnecting.id
+              editorState.personConnectingId
             ]
           }
           next.parentsByChildId = {
             ...next.parentsByChildId,
-            [personConnecting.id]: [
-              ...prev.parentsByChildId[personConnecting.id] || [],
+            [editorState.personConnectingId]: [
+              ...prev.parentsByChildId[editorState.personConnectingId] || [],
               newPerson.id
             ] as [string] | [string, string]
           }
@@ -388,73 +421,69 @@ export default function FamilyTree() {
         case "child":
           next.childrenByParentId = {
             ...next.childrenByParentId,
-            [personConnecting.id]: [
-              ...prev.childrenByParentId[personConnecting.id] || [],
+            [editorState.personConnectingId]: [
+              ...prev.childrenByParentId[editorState.personConnectingId] || [],
               newPerson.id
             ]
           }
           next.parentsByChildId = {
             ...next.parentsByChildId,
             [newPerson.id]: [
-              personConnecting.id
+              editorState.personConnectingId
             ]
           }
           break
         }
-        return next;
-      });
-      setMode("dragging")
-      // reset values back to defaults
-      setNewPersonWidth(80)
-      setNewPersonConnection("partner")
-      if (personConnecting === null || connection === "none") {
-        return
-      }
+      return next;
+    });
+    if (!editorState.independent) {
       setRelationships(prev => {
-      let newRelationship: RelationshipType;
-      let next = [...prev]
-      switch (connection) {
-        case "parent":
-          let parents = people.parentsByChildId[personConnecting.id] || []
-          if (parents.length === 1) {
-            next = next.filter(rel => rel.type !== "parent-child" || rel.parent !== parents[0])
+        let newRelationship: RelationshipType;
+        let next = [...prev]
+        switch (editorState.connection) {
+          case "parent":
+            let parents = people.parentsByChildId[editorState.personConnectingId] || []
+            if (parents.length === 1) {
+              next = next.filter(rel => rel.type !== "parent-child" || rel.parent !== parents[0])
+              newRelationship = {
+                type: "partner-partner",
+                id: uuid(),
+                firstPartner: parents[0],
+                secondPartner: newPerson.id,
+                children: [editorState.personConnectingId]
+              }
+            } else {
+              newRelationship = {
+                type: "parent-child",
+                id: uuid(),
+                parent: newPerson.id,
+                child: editorState.personConnectingId
+              }
+            }
+            break
+          case "partner":
             newRelationship = {
               type: "partner-partner",
               id: uuid(),
-              firstPartner: parents[0],
+              firstPartner: editorState.personConnectingId,
               secondPartner: newPerson.id,
-              children: [personConnecting.id]
+              children: []
             }
-          } else {
+            break
+          case "child":
             newRelationship = {
               type: "parent-child",
               id: uuid(),
-              parent: newPerson.id,
-              child: personConnecting.id
+              parent: editorState.personConnectingId,
+              child: newPerson.id
             }
-          }
-          break
-        case "partner":
-          newRelationship = {
-            type: "partner-partner",
-            id: uuid(),
-            firstPartner: personConnecting.id,
-            secondPartner: newPerson.id,
-            children: []
-          }
-          break
-        case "child":
-          newRelationship = {
-            type: "parent-child",
-            id: uuid(),
-            parent: personConnecting.id,
-            child: newPerson.id
-          }
-          break
-      }
-      next.push(newRelationship)
-      return next
-    })
+            break
+        }
+        next.push(newRelationship)
+        return next
+      })
+    }
+    setEditorState({state: "dragging"})
   }
 
   return (
@@ -466,7 +495,7 @@ export default function FamilyTree() {
       ref={ref}
     >
       {relationships.map(relationship => {
-        if (relationship.type == "parent-child") {
+        if (relationship.type === "parent-child") {
           return (
             <Relationship 
               type="parent-child"
@@ -475,7 +504,7 @@ export default function FamilyTree() {
               child={people.byId[relationship.child]}
               screenPositionX={screenPosition.x}
               screenPositionY={screenPosition.y}
-              clickable={mode === "dragging" || mode === "options"}
+              clickable={["dragging", "options"].includes(editorState.state)}
               onClick={() => handleAddPersonFromRelationship(relationship.id)}
             />
           )
@@ -489,19 +518,19 @@ export default function FamilyTree() {
               children={relationship.children.map(child => people.byId[child])}
               screenPositionX={screenPosition.x}
               screenPositionY={screenPosition.y}
-              clickable={mode === "dragging" || mode === "options"}
+              clickable={["dragging", "options"].includes(editorState.state)}
               onClick={() => handleAddPersonFromRelationship(relationship.id)}
             />
           )
         }
       })}
-      {mode === "connecting" && (
+      {editorState.state === "connecting" && (
         <PersonLocationChooser 
           screenPositionX={screenPosition.x}
           screenPositionY={screenPosition.y}
-          newPersonData={newPersonData}
-          isConnected={newPersonConnection !== "none"}
-          personConnectingData={personConnecting}
+          newPersonData={editorState.newPersonData}
+          isConnected={!editorState.independent}
+          personConnectingData={editorState.independent ? null : editorState.personConnectingData}
           screenWidth={width}
           screenHeight={height}
         />
@@ -523,42 +552,42 @@ export default function FamilyTree() {
           />
         )
       })}
-      {mode === "naming" && (
+      {editorState.state === "naming" && (
         <>
-          {newPersonConnection !== "partner" && newPersonConnection !== "none" && personConnecting && (
+          {!editorState.independent && editorState.connection !== "partner" && (
             <Relationship 
               type="parent-child"
-              parent={newPersonConnection === "parent" ? newPersonData : personConnecting}
-              child={newPersonConnection === "parent" ? personConnecting : newPersonData}
+              parent={editorState.connection === "parent" ? editorState.newPersonData : editorState.personConnectingData}
+              child={editorState.connection === "parent" ? editorState.personConnectingData : editorState.newPersonData}
               screenPositionX={screenPosition.x}
               screenPositionY={screenPosition.y}
             />
           )}
-          {newPersonConnection === "partner" && personConnecting && (
+          {!editorState.independent && editorState.connection === "partner" && (
             <Relationship 
               type="partner-partner"
-              firstPartner={personConnecting}
-              secondPartner={newPersonData}
+              firstPartner={editorState.personConnectingData}
+              secondPartner={editorState.newPersonData}
               screenPositionX={screenPosition.x}
               screenPositionY={screenPosition.y}
             />
           )}
           <PersonNamer 
-            positionX={newPersonPosition.x + screenPosition.x} 
-            positionY={newPersonPosition.y + screenPosition.y}
+            positionX={editorState.newPersonData.positionX + screenPosition.x} 
+            positionY={editorState.newPersonData.positionY + screenPosition.y}
             onUpdateConnection={handleUpdatePersonNamerConnection}
             onUpdateWidth={handleUpdatePersonNamerWidth}
             onSubmit={handlePersonNamerSubmit}
-            includeConnections={includeConnections || ["partner"]}
-            isConnected={newPersonConnection !== "none"}
-            right={newPersonRelationshipPossibilitiesRight}
+            includeConnections={editorState.independent ? undefined : editorState.connectionOptions}
+            isConnected={!editorState.independent}
+            right={editorState.independent ? undefined : editorState.relationshipOptionsOnRight}
           />
         </>
       )}
       <Overlay 
-        disabled={mode !== "dragging" && mode !== "options"}
+        disabled={["connecting", "naming", "disabled"].includes(editorState.state)}
         onAddPerson={startAddingNewPerson}
-        helpText={mode}
+        helpText={editorState.state}
       /> 
       <ErrorMessage message={errorMessage} key={errorMessageKey} />
     </div>
