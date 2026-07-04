@@ -13,7 +13,7 @@ type PersonNamerProps = {
   includeConnections?: [Connection] | [Connection, Connection] | [Connection, Connection, Connection]
   onUpdateConnection?: (connection: Connection) => void;
   onUpdateWidth?: (width: number) => void;
-  onSubmit: (connection: Connection, name: string) => void;
+  onSubmit: (name: string) => void;
   right?: boolean;
 }
 
@@ -26,9 +26,9 @@ export default function PersonNamer({ positionX, positionY, isConnected = false,
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       if (isConnected) {
-        onSubmit(connection, name)
+        onSubmit(name)
       } else {
-        onSubmit("none", name)
+        onSubmit(name)
       }
     }
   }
@@ -53,7 +53,7 @@ export default function PersonNamer({ positionX, positionY, isConnected = false,
           positionX={right ? positionX + width / 2 + 70 + 20 : positionX - width / 2 - 70 - 20}
           positionY={positionY}
           includeConnections={includeConnections}
-          onClick={connection => onSubmit(connection, name)}
+          onClick={() => onSubmit(name)}
           onHover={handleHover}
           animation={right ? "right" : "left"}
         />

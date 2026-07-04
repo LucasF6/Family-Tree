@@ -4,10 +4,11 @@ import styles from "./FamilyTree.module.css"
 import { useState, useRef, useEffect } from "react";
 import Person from "@/components/Person";
 import { PointerEvent } from "react";
-import { Connection, ConnectionSet, PersonCardData, RelationshipPathData } from "@/types";
+import { Connection, ConnectionSet, PersonCardData, RelationshipDraft, Relationship, IndependentDraftData, RealRelationshipDraft, RelationshipDraftBase, RelationshipData } from "@/types";
 import ErrorMessage from "@/components/ErrorMessage";
 import { v4 as uuid } from 'uuid'
-import Relationship from "@/components/Relationship";
+import { RelationshipPath } from "@/components/RelationshipPath";
+import { RelationshipPathDraft } from "@/components/RelationshipPath"
 import PersonNamer from "@/components/PersonNamer";
 import PersonLocationChooser from "@/components/PersonLocationChooser";
 import Overlay from "@/components/Overlay";
@@ -54,28 +55,22 @@ type EditorState =
   | {
       state: "connecting"
       independent: true
-      newPersonData: PersonCardData
+      relationshipDraft: IndependentDraftData
     }
   | {
       state: "connecting"
       independent: false
-      personConnectingData: PersonCardData
-      personConnectingId: string
-      newPersonData: PersonCardData
-      connection: Exclude<Connection, "none"> // What the new person is to the person being connected
+      relationshipDraft: RealRelationshipDraft
     }
   | {
       state: "naming"
       independent: true
-      newPersonData: PersonCardData
+      relationshipDraft: IndependentDraftData
     }
   | {
       state: "naming"
       independent: false
-      personConnectingData: PersonCardData
-      personConnectingId: string
-      newPersonData: PersonCardData
-      connection: Exclude<Connection, "none">
+      relationshipDraft: RealRelationshipDraft
       connectionOptions: ConnectionSet
       relationshipOptionsOnRight: boolean
     }
@@ -158,6 +153,23 @@ export default function FamilyTree() {
 
     return () => observer.disconnect()
   }, [])
+
+  const relationshipData: Relationship[] = relationships.map(relationship => (
+    relationship.type === "partner-partner"
+      ? {
+          type: "couple",
+          firstPartner: people.byId[relationship.firstPartner],
+          secondPartner: people.byId[relationship.secondPartner],
+          children: relationship.children.map(child => people.byId[child]),
+          relationshipId: relationship.id
+        }
+      : {
+          type: "parent-child",
+          parent: people.byId[relationship.parent],
+          child: people.byId[relationship.child],
+          relationshipId: relationship.id 
+        }
+  ))
   
   function updateErrorMessage(message: string) {
     setErrorMessage(message)
@@ -216,14 +228,16 @@ export default function FamilyTree() {
       setEditorState({
         state: "connecting",
         independent: false,
-        personConnectingId: personId,
-        personConnectingData: people.byId[personId],
-        newPersonData: {
-          positionX: clientX - screenPosition.x,
-          positionY: clientY - screenPosition.y,
-          width: 80
-        },
-        connection: "partner"
+        relationshipDraft: {
+          from: "partner",
+          partner: people.byId[personId],
+          connectingId: personId,
+          newPerson: {
+            positionX: clientX - screenPosition.x,
+            positionY: clientY - screenPosition.y,
+            width: 80
+          }
+        }
       })
     }
   }
@@ -239,16 +253,51 @@ export default function FamilyTree() {
     setEditorState({
       state: "connecting",
       independent: true,
-      newPersonData: {
-        positionX: mousePosition.current.x - screenPosition.x,
-        positionY: mousePosition.current.y - screenPosition.y,
-        width: 80
+      relationshipDraft: {
+        from: "none",
+        newPerson: {
+          positionX: mousePosition.current.x - screenPosition.x,
+          positionY: mousePosition.current.y - screenPosition.y,
+          width: 80
+        }
       }
     })
   }
 
-  function handleAddPersonFromRelationship(relationshipId: string) {
-    console.log(relationshipId)
+  function handleAddPersonFromRelationship(relationship: Relationship) {
+    if (relationship.type === "couple") {
+      setEditorState({
+        state: "connecting",
+        independent: false,
+        relationshipDraft: {
+          from: "couple",
+          firstPartner: relationship.firstPartner,
+          secondPartner: relationship.secondPartner,
+          newPerson: {
+            positionX: mousePosition.current.x - screenPosition.x,
+            positionY: mousePosition.current.y - screenPosition.y,
+            width: 80
+          },
+          connectingId: relationship.relationshipId
+        }
+      })
+    } else {
+      setEditorState({
+        state: "connecting",
+        independent: false,
+        relationshipDraft: {
+          from: "parent-child",
+          parent: relationship.parent,
+          child: relationship.child,
+          newPerson: {
+            positionX: mousePosition.current.x - screenPosition.x,
+            positionY: mousePosition.current.y - screenPosition.y,
+            width: 80
+          },
+          connectingId: relationship.relationshipId
+        }
+      })
+    }
   }
 
   function handleUpdatePosition(id: string, x: number, y: number) {
@@ -278,6 +327,19 @@ export default function FamilyTree() {
     }))
   }
 
+  function getConnectingOptions(draft: RealRelationshipDraft): ConnectionSet {
+    switch (draft.from) {
+      case "couple":
+      case "parent-child":
+        return ["child"]
+      default:
+        if (people.parentsByChildId[draft.connectingId]?.length === 2) {
+          return ["partner", "child"]
+        } else {
+          return ["parent", "partner", "child"]
+        }
+    }
+  }
 
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
     if (["dragging", "naming"].includes(editorState.state)) {
@@ -299,24 +361,31 @@ export default function FamilyTree() {
         setEditorState({
           state: "naming",
           independent: true,
-          newPersonData: {
-            positionX: e.clientX - screenPosition.x,
-            positionY: e.clientY - screenPosition.y,
-            width: 80
-          },
+          relationshipDraft: {
+            from: "none", 
+            newPerson: {
+              positionX: e.clientX - screenPosition.x,
+              positionY: e.clientY - screenPosition.y,
+              width: 80
+            }
+          }
         })
       } else {
         setEditorState({
           ...editorState,
           state: "naming",
           independent: false,
-          newPersonData: {
-            positionX: e.clientX - screenPosition.x,
-            positionY: e.clientY - screenPosition.y,
-            width: 80
+          relationshipDraft: {
+            ...editorState.relationshipDraft,
+            newPerson: {
+              positionX: mousePosition.current.x - screenPosition.x,
+              positionY: mousePosition.current.y - screenPosition.y,
+              width: 80
+            },
           },
-          relationshipOptionsOnRight: e.clientX >= editorState.personConnectingData.positionX + screenPosition.x,
-          connectionOptions: people.parentsByChildId[editorState.personConnectingId]?.length === 2 ? ["partner", "child"] : ["parent", "partner", "child"],
+          relationshipOptionsOnRight: editorState.relationshipDraft.from === "partner" 
+            ? editorState.relationshipDraft.newPerson.positionX > editorState.relationshipDraft.partner.positionX : true,
+          connectionOptions: getConnectingOptions(editorState.relationshipDraft)
         })
       }
     }
@@ -336,40 +405,57 @@ export default function FamilyTree() {
         y: e.clientY + dragOffset.current.y
       })
     } else if (editorState.state === "connecting") {
-      setEditorState({
-        ...editorState,
-        newPersonData: {
-          ...editorState.newPersonData,
-          positionX: e.clientX - screenPosition.x,
-          positionY: e.clientY - screenPosition.y
-        }
+      const draft = editorState.relationshipDraft
+      setEditorState(prev => {
+        if (prev.state !== "connecting") return prev;
+        return {
+          ...prev,
+          relationshipDraft: {
+            ...prev.relationshipDraft,
+            newPerson: {
+              positionX: e.clientX - screenPosition.x,
+              positionY: e.clientY - screenPosition.y,
+              width: prev.relationshipDraft.newPerson.width
+            }
+          }
+        } as typeof prev
       })
     }
   }
 
   function handleUpdatePersonNamerConnection(connection: Connection) {
     setEditorState(prev => {
-      if (prev.state !== "naming" || prev.independent || connection === "none") return prev
-      return {
-        ...prev,
-        connection
+      if (prev.state !== "naming" || prev.independent || prev.relationshipDraft.from === "couple" || prev.relationshipDraft.from === "parent-child") {
+        return prev
       }
+      let personConnecting: PersonCardData
+      switch (prev.relationshipDraft.from) {
+        case "parent": personConnecting = prev.relationshipDraft.parent; break
+        case "partner": personConnecting = prev.relationshipDraft.partner; break
+        case "child": personConnecting = prev.relationshipDraft.child; break
+      }
+      const next = {...prev}
+      switch (connection) {
+        case "parent": next.relationshipDraft = {...next.relationshipDraft, from: "child", child: personConnecting}; break
+        case "partner": next.relationshipDraft = {...next.relationshipDraft, from: "partner", partner: personConnecting}; break
+        case "child": next.relationshipDraft = {...next.relationshipDraft, from: "parent", parent: personConnecting}; break
+      }
+      return next
     })
   }
 
   function handleUpdatePersonNamerWidth(width: number){
-    if (editorState.state === "connecting" || editorState.state === "naming") {
-      setEditorState({
-        ...editorState,
-        newPersonData: {
-          ...editorState.newPersonData,
-          width
-        }
-      })
-    }
+    setEditorState(prev => {
+      if (prev.state === "connecting" || prev.state === "naming") {
+        const next = {...prev}
+        next.relationshipDraft.newPerson.width = width
+        return next
+      }
+      return prev
+    })
   }
 
-  function handlePersonNamerSubmit(connection: Connection, name: string) {
+  function handlePersonNamerSubmit(name: string) {
     if (name === "") {
       updateErrorMessage("Error: Empty text")
       return
@@ -377,7 +463,7 @@ export default function FamilyTree() {
     if (editorState.state !== "naming") {
       return
     }
-    let newPerson = createPerson(name, editorState.newPersonData.positionX, editorState.newPersonData.positionY)
+    let newPerson = createPerson(name, editorState.relationshipDraft.newPerson.positionX, editorState.relationshipDraft.newPerson.positionY)
     setPeople(prev => {
       const next = {
         ...prev,
@@ -398,66 +484,117 @@ export default function FamilyTree() {
       if (editorState.independent) {
         return next
       }
-      switch (editorState.connection) {
-        case "parent":
-          // This part needs to be fixed
-          if (prev.parentsByChildId[editorState.personConnectingId]?.length === 2) {
+      switch (editorState.relationshipDraft.from) {
+        case "child": {
+          // The relationship draft being from a child means new person is their parent
+          // This condition should never be true
+          if (prev.parentsByChildId[editorState.relationshipDraft.connectingId]?.length === 2) {
             return prev
           }
           next.childrenByParentId = {
             ...next.childrenByParentId,
             [newPerson.id]: [
-              editorState.personConnectingId
+              editorState.relationshipDraft.connectingId
             ]
           }
           next.parentsByChildId = {
             ...next.parentsByChildId,
-            [editorState.personConnectingId]: [
-              ...prev.parentsByChildId[editorState.personConnectingId] || [],
+            [editorState.relationshipDraft.connectingId]: [
+              ...prev.parentsByChildId[editorState.relationshipDraft.connectingId] || [],
               newPerson.id
             ] as [string] | [string, string]
           }
           break
-        case "child":
+        } 
+        case "parent": {
+          // The relationship draft being from a parent means new person is their child
           next.childrenByParentId = {
             ...next.childrenByParentId,
-            [editorState.personConnectingId]: [
-              ...prev.childrenByParentId[editorState.personConnectingId] || [],
+            [editorState.relationshipDraft.connectingId]: [
+              ...prev.childrenByParentId[editorState.relationshipDraft.connectingId] || [],
               newPerson.id
             ]
           }
           next.parentsByChildId = {
             ...next.parentsByChildId,
             [newPerson.id]: [
-              editorState.personConnectingId
+              editorState.relationshipDraft.connectingId
             ]
           }
           break
         }
+        case "couple": {
+          // The relationship draft being from a couple means the new person is their child
+          const relationship = relationships.find(rel => rel.id === editorState.relationshipDraft.connectingId)
+          // This condition should never be true
+          if (relationship?.type !== "partner-partner") {
+            return prev
+          }
+          next.childrenByParentId = {
+            ...next.childrenByParentId,
+            [relationship.firstPartner]: [
+              ...next.childrenByParentId[relationship.firstPartner] || [],
+              newPerson.id
+            ],
+            [relationship.secondPartner]: [
+              ...next.childrenByParentId[relationship.secondPartner] || [],
+              newPerson.id
+            ]
+          }
+          next.parentsByChildId = {
+            ...next.parentsByChildId,
+            [newPerson.id]: [relationship.firstPartner, relationship.secondPartner]
+          }
+          break
+        }
+        case "parent-child": {
+          // The relationship draft being from a parent child means new person is a child of the parent
+          const relationship = relationships.find(rel => rel.id === editorState.relationshipDraft.connectingId)
+          // This condition should never be true
+          if (relationship?.type !== "parent-child") {
+            return prev
+          }
+          next.childrenByParentId = {
+            ...next.childrenByParentId,
+            [relationship.parent]: [
+              ...prev.childrenByParentId[relationship.parent] || [],
+              newPerson.id
+            ]
+          }
+          next.parentsByChildId = {
+            ...next.parentsByChildId,
+            [newPerson.id]: [
+              relationship.parent
+            ]
+          }
+          break
+        }
+      }
       return next;
     });
     if (!editorState.independent) {
       setRelationships(prev => {
+        debugger
         let newRelationship: RelationshipType;
         let next = [...prev]
-        switch (editorState.connection) {
-          case "parent":
-            let parents = people.parentsByChildId[editorState.personConnectingId] || []
+        switch (editorState.relationshipDraft.from) {
+          case "child":
+            let parents = people.parentsByChildId[editorState.relationshipDraft.connectingId] || []
             if (parents.length === 1) {
-              next = next.filter(rel => rel.type !== "parent-child" || rel.parent !== parents[0])
+              next = next.filter(rel => rel.type !== "parent-child" || rel.parent !== parents[0] || rel.child !== editorState.relationshipDraft.connectingId)
               newRelationship = {
                 type: "partner-partner",
                 id: uuid(),
                 firstPartner: parents[0],
                 secondPartner: newPerson.id,
-                children: [editorState.personConnectingId]
+                children: [editorState.relationshipDraft.connectingId]
               }
             } else {
               newRelationship = {
                 type: "parent-child",
                 id: uuid(),
                 parent: newPerson.id,
-                child: editorState.personConnectingId
+                child: editorState.relationshipDraft.connectingId
               }
             }
             break
@@ -465,19 +602,43 @@ export default function FamilyTree() {
             newRelationship = {
               type: "partner-partner",
               id: uuid(),
-              firstPartner: editorState.personConnectingId,
+              firstPartner: editorState.relationshipDraft.connectingId,
               secondPartner: newPerson.id,
               children: []
             }
             break
-          case "child":
+          case "parent":
             newRelationship = {
               type: "parent-child",
               id: uuid(),
-              parent: editorState.personConnectingId,
+              parent: editorState.relationshipDraft.connectingId,
               child: newPerson.id
             }
             break
+          case "couple": {
+            const relationship = next.find(rel => rel.id === editorState.relationshipDraft.connectingId)
+            // This condition should never be true
+            if (relationship?.type !== "partner-partner") return prev
+            next = next.filter(rel => rel.id !== editorState.relationshipDraft.connectingId)
+            newRelationship = {
+              ...relationship,
+              id: uuid(),
+              children: [...relationship.children, newPerson.id]
+            }
+            break
+          }
+          case "parent-child": {
+            const relationship = next.find(rel => rel.id === editorState.relationshipDraft.connectingId)
+            // This condition should never be true
+            if (relationship?.type !== "parent-child") return prev
+            newRelationship = {
+              type: "parent-child",
+              id: uuid(),
+              parent: relationship.parent,
+              child: newPerson.id
+            }
+            break
+          }
         }
         next.push(newRelationship)
         return next
@@ -494,43 +655,21 @@ export default function FamilyTree() {
       onPointerMove={handlePointerMove}
       ref={ref}
     >
-      {relationships.map(relationship => {
-        if (relationship.type === "parent-child") {
-          return (
-            <Relationship 
-              type="parent-child"
-              key={relationship.id}
-              parent={people.byId[relationship.parent]}
-              child={people.byId[relationship.child]}
-              screenPositionX={screenPosition.x}
-              screenPositionY={screenPosition.y}
-              clickable={["dragging", "options"].includes(editorState.state)}
-              onClick={() => handleAddPersonFromRelationship(relationship.id)}
-            />
-          )
-        } else {
-          return (
-            <Relationship 
-              type="partner-partner"
-              key={relationship.id}
-              firstPartner={people.byId[relationship.firstPartner]}
-              secondPartner={people.byId[relationship.secondPartner]}
-              children={relationship.children.map(child => people.byId[child])}
-              screenPositionX={screenPosition.x}
-              screenPositionY={screenPosition.y}
-              clickable={["dragging", "options"].includes(editorState.state)}
-              onClick={() => handleAddPersonFromRelationship(relationship.id)}
-            />
-          )
-        }
-      })}
-      {editorState.state === "connecting" && (
-        <PersonLocationChooser 
+      {relationshipData.map(relationship => (
+        <RelationshipPath 
+          key={relationship.relationshipId}
           screenPositionX={screenPosition.x}
           screenPositionY={screenPosition.y}
-          newPersonData={editorState.newPersonData}
-          isConnected={!editorState.independent}
-          personConnectingData={editorState.independent ? null : editorState.personConnectingData}
+          relationshipData={relationship}
+          onClick={() => handleAddPersonFromRelationship(relationship)}
+          disabled={editorState.state !== "dragging"}
+        />
+      ))}
+      {editorState.state === "connecting" && (
+        <PersonLocationChooser 
+          relationshipDraftData={editorState.relationshipDraft}
+          screenPositionX={screenPosition.x}
+          screenPositionY={screenPosition.y}
           screenWidth={width}
           screenHeight={height}
         />
@@ -554,27 +693,16 @@ export default function FamilyTree() {
       })}
       {editorState.state === "naming" && (
         <>
-          {!editorState.independent && editorState.connection !== "partner" && (
-            <Relationship 
-              type="parent-child"
-              parent={editorState.connection === "parent" ? editorState.newPersonData : editorState.personConnectingData}
-              child={editorState.connection === "parent" ? editorState.personConnectingData : editorState.newPersonData}
-              screenPositionX={screenPosition.x}
-              screenPositionY={screenPosition.y}
-            />
-          )}
-          {!editorState.independent && editorState.connection === "partner" && (
-            <Relationship 
-              type="partner-partner"
-              firstPartner={editorState.personConnectingData}
-              secondPartner={editorState.newPersonData}
+          {!editorState.independent && (
+            <RelationshipPathDraft
+              relationshipData={editorState.relationshipDraft}
               screenPositionX={screenPosition.x}
               screenPositionY={screenPosition.y}
             />
           )}
           <PersonNamer 
-            positionX={editorState.newPersonData.positionX + screenPosition.x} 
-            positionY={editorState.newPersonData.positionY + screenPosition.y}
+            positionX={editorState.relationshipDraft.newPerson.positionX + screenPosition.x} 
+            positionY={editorState.relationshipDraft.newPerson.positionY + screenPosition.y}
             onUpdateConnection={handleUpdatePersonNamerConnection}
             onUpdateWidth={handleUpdatePersonNamerWidth}
             onSubmit={handlePersonNamerSubmit}
@@ -593,3 +721,4 @@ export default function FamilyTree() {
     </div>
   );
 }
+

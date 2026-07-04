@@ -3,7 +3,7 @@ import { FamilyTreeMode } from "@/types";
 
 type OverlayProps = {
   disabled: boolean;
-  onAddPerson: (mouseX: number, mouseY: number) => void;
+  onAddPerson: () => void;
   helpText: FamilyTreeMode // What help text appears on the bottom right depends on the mode
 }
 
