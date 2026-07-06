@@ -1,6 +1,6 @@
 'use client'
 
-import { PersonCardData, RelationshipDraftData } from "@/src/types";
+import { PersonCardData, RelationshipDraftData } from "@/types";
 import clsx from "clsx";
 import { getAveragePositionBetweenPartners, getChildToParentPath, getChildToPositionPath, getPartnerToPartnerPath } from "./paths";
 

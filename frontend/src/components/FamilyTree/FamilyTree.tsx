@@ -2,34 +2,18 @@
 
 import styles from "./FamilyTree.module.css"
 import { useState, useRef, useEffect } from "react";
-import Person from "@/src/components/Person";
+import Person from "@/components/Person";
 import { PointerEvent } from "react";
-import { Connection, ConnectionSet, PersonCardData, RelationshipDraft, Relationship, IndependentDraftData, RealRelationshipDraft, RelationshipDraftBase, RelationshipData, EditorState } from "@/src/types";
-import ErrorMessage from "@/src/components/ErrorMessage";
+import { Connection, ConnectionSet, PersonCardData, RelationshipDraft, Relationship, IndependentDraftData, RealRelationshipDraft, RelationshipDraftBase, RelationshipData, EditorState, People, PersonType } from "@/types";
+import ErrorMessage from "@/components/ErrorMessage";
 import { v4 as uuid } from 'uuid'
-import { RelationshipPath } from "@/src/components/RelationshipPath";
-import { RelationshipPathDraft } from "@/src/components/RelationshipPath"
-import PersonNamer from "@/src/components/PersonNamer";
-import PersonLocationChooser from "@/src/components/PersonLocationChooser";
-import Overlay from "@/src/components/Overlay";
-import { FamilyTreeMode } from "@/src/types";
+import { RelationshipPath } from "@/components/RelationshipPath";
+import { RelationshipPathDraft } from "@/components/RelationshipPath"
+import PersonNamer from "@/components/PersonNamer";
+import PersonLocationChooser from "@/components/PersonLocationChooser";
+import Overlay from "@/components/Overlay";
+import { FamilyTreeMode } from "@/types";
 import { produce } from "immer";
-
-type PersonType = {
-  name: string;
-  id: string;
-  positionX: number;
-  positionY: number;
-  width: number;
-  mode: "draggable" | "connectable" | "disabled" | "options";
-}
-
-type People = {
-  byId: Record<string, PersonType>;
-  ids: string[];
-  parentsByChildId: Record<string, [] | [string] | [string, string]>;
-  childrenByParentId: Record<string, string[]>;
-}
 
 type RelationshipType =
   | {
@@ -40,6 +24,7 @@ type RelationshipType =
     }
   | {
       type: "partner-partner";
+      
       id: string;
       firstPartner: string; // Person ID
       secondPartner: string; // Person ID

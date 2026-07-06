@@ -2,7 +2,7 @@
 
 import { clsx } from "clsx";
 import styles from "./RelationshipOptions.module.css"
-import { Connection } from "@/src/types"
+import { Connection } from "@/types"
 
 type RelationshipOptionsProps = {
   positionX: number;

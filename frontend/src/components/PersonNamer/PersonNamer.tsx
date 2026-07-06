@@ -3,8 +3,8 @@
 import { useState, useRef } from "react"
 import styles from "./PersonNamer.module.css"
 import { KeyboardEvent, ChangeEvent } from "react";
-import { Connection } from "@/src/types";
-import RelationshipOptions from "@/src/components/RelationshipOptions";
+import { Connection } from "@/types";
+import RelationshipOptions from "@/components/RelationshipOptions";
 
 type PersonNamerProps = {
   positionX: number;

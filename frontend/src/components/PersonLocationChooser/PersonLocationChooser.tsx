@@ -1,9 +1,9 @@
 'use client'
 
-import { RelationshipDraftData } from "@/src/types";
+import { RelationshipDraftData } from "@/types";
 import styles from "./PersonLocationChooser.module.css"
 import clsx from "clsx";
-import { RelationshipPathDraft } from "@/src/components/RelationshipPath"
+import { RelationshipPathDraft } from "@/components/RelationshipPath"
 
 type PersonLocationChooserProps = {
   relationshipDraftData: RelationshipDraftData

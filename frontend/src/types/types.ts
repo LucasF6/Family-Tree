@@ -109,7 +109,23 @@ export type EditorState =
       state: "disabled"
     }
 
-type MyEditorState =
+export type People = {
+  byId: Record<string, PersonType>;
+  ids: string[];
+  parentsByChildId: Record<string, [] | [string] | [string, string]>;
+  childrenByParentId: Record<string, string[]>;
+}
+
+export type PersonType = {
+  name: string;
+  id: string;
+  positionX: number;
+  positionY: number;
+  width: number;
+  mode: "draggable" | "connectable" | "disabled" | "options";
+}
+
+export type MyEditorState =
   | {
       state: "dragging" | "options" | "disabled"
     }
@@ -117,3 +133,4 @@ type MyEditorState =
       state: "connecting"
 
     }
+  

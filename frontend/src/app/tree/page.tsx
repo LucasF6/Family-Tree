@@ -1,6 +1,6 @@
 'use client'
 
-import FamilyTree from "@/src/components/FamilyTree";
+import FamilyTree from "@/components/FamilyTree";
 
 export default function Home() {
   return (
