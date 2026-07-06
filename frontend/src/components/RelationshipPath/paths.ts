@@ -1,4 +1,4 @@
-import { PersonCardData } from "@/types"
+import { PersonCardData } from "@/src/types"
 
 const personHeight = 60
 

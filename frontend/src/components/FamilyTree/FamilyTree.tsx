@@ -2,17 +2,17 @@
 
 import styles from "./FamilyTree.module.css"
 import { useState, useRef, useEffect } from "react";
-import Person from "@/components/Person";
+import Person from "@/src/components/Person";
 import { PointerEvent } from "react";
-import { Connection, ConnectionSet, PersonCardData, RelationshipDraft, Relationship, IndependentDraftData, RealRelationshipDraft, RelationshipDraftBase, RelationshipData, EditorState } from "@/types";
-import ErrorMessage from "@/components/ErrorMessage";
+import { Connection, ConnectionSet, PersonCardData, RelationshipDraft, Relationship, IndependentDraftData, RealRelationshipDraft, RelationshipDraftBase, RelationshipData, EditorState } from "@/src/types";
+import ErrorMessage from "@/src/components/ErrorMessage";
 import { v4 as uuid } from 'uuid'
-import { RelationshipPath } from "@/components/RelationshipPath";
-import { RelationshipPathDraft } from "@/components/RelationshipPath"
-import PersonNamer from "@/components/PersonNamer";
-import PersonLocationChooser from "@/components/PersonLocationChooser";
-import Overlay from "@/components/Overlay";
-import { FamilyTreeMode } from "@/types";
+import { RelationshipPath } from "@/src/components/RelationshipPath";
+import { RelationshipPathDraft } from "@/src/components/RelationshipPath"
+import PersonNamer from "@/src/components/PersonNamer";
+import PersonLocationChooser from "@/src/components/PersonLocationChooser";
+import Overlay from "@/src/components/Overlay";
+import { FamilyTreeMode } from "@/src/types";
 import { produce } from "immer";
 
 type PersonType = {

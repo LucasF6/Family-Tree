@@ -1,5 +1,5 @@
-import AddPersonButton from "@/components/AddPersonButton";
-import { FamilyTreeMode } from "@/types";
+import AddPersonButton from "@/src/components/AddPersonButton";
+import { FamilyTreeMode } from "@/src/types";
 
 type OverlayProps = {
   disabled: boolean;
