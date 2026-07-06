@@ -13,6 +13,7 @@ import PersonNamer from "@/components/PersonNamer";
 import PersonLocationChooser from "@/components/PersonLocationChooser";
 import Overlay from "@/components/Overlay";
 import { FamilyTreeMode } from "@/types";
+import { produce } from "immer";
 
 type PersonType = {
   name: string;
@@ -129,6 +130,11 @@ export default function FamilyTree() {
         if (["dragging", "options"].includes(editorState.state)) {
           startAddingNewPerson()
         }
+      } else if (e.key === "q") {
+        console.log(mousePosition.current.x, mousePosition.current.y)
+        if (editorState.state === "connecting") {
+          console.log(editorState.relationshipDraft.newPerson.positionX + screenPosition.x, editorState.relationshipDraft.newPerson.positionY + screenPosition.y)
+        }
       }
     }
     
@@ -139,7 +145,7 @@ export default function FamilyTree() {
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [editorState.state])
+  }, [editorState.state, startAddingNewPerson]) // May change this later to fix wrong-location bug in person-creation
 
   useEffect(() => {
     if (!ref.current) return
@@ -405,21 +411,28 @@ export default function FamilyTree() {
         y: e.clientY + dragOffset.current.y
       })
     } else if (editorState.state === "connecting") {
-      const draft = editorState.relationshipDraft
-      setEditorState(prev => {
-        if (prev.state !== "connecting") return prev;
-        return {
-          ...prev,
-          relationshipDraft: {
-            ...prev.relationshipDraft,
-            newPerson: {
-              positionX: e.clientX - screenPosition.x,
-              positionY: e.clientY - screenPosition.y,
-              width: prev.relationshipDraft.newPerson.width
-            }
-          }
-        } as typeof prev
-      })
+      // setEditorState(prev => {
+      //   if (prev.state !== "connecting") return prev;
+      //   return {
+      //     ...prev,
+      //     relationshipDraft: {
+      //       ...prev.relationshipDraft,
+      //       newPerson: {
+      //         positionX: e.clientX - screenPosition.x,
+      //         positionY: e.clientY - screenPosition.y,
+      //         width: prev.relationshipDraft.newPerson.width
+      //       }
+      //     }
+      //   } as typeof prev
+      // })
+      setEditorState(prev => produce(prev, draft => {
+        if (draft.state !== "connecting") return
+        draft.relationshipDraft.newPerson = {
+          positionX: e.clientX - screenPosition.x,
+          positionY: e.clientY - screenPosition.y,
+          width: draft.relationshipDraft.newPerson.width
+        }
+      }))
     }
   }
 
@@ -574,7 +587,6 @@ export default function FamilyTree() {
     });
     if (!editorState.independent) {
       setRelationships(prev => {
-        debugger
         let newRelationship: RelationshipType;
         let next = [...prev]
         switch (editorState.relationshipDraft.from) {
@@ -721,4 +733,3 @@ export default function FamilyTree() {
     </div>
   );
 }
-

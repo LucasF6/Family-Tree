@@ -15,6 +15,7 @@ type PersonLocationChooserProps = {
 
 export default function PersonLocationChooser({ relationshipDraftData, screenPositionX, screenPositionY, screenWidth, screenHeight }: PersonLocationChooserProps) {
   const independent = relationshipDraftData.from === "none"
+  // console.log(relationshipDraftData.newPerson.positionX + screenPositionX, relationshipDraftData.newPerson.positionY + screenPositionY)
 
   return (
     <>
