@@ -74,3 +74,46 @@ export type ConnectionSet =
   | [Connection]
   | [Connection, Connection]
   | [Connection, Connection, Connection]
+
+  
+export type EditorState =
+  | {
+      state: "dragging"
+    }
+  | {
+      state: "options"
+    }
+  | {
+      state: "connecting"
+      independent: true
+      relationshipDraft: IndependentDraftData
+    }
+  | {
+      state: "connecting"
+      independent: false
+      relationshipDraft: RealRelationshipDraft
+    }
+  | {
+      state: "naming"
+      independent: true
+      relationshipDraft: IndependentDraftData
+    }
+  | {
+      state: "naming"
+      independent: false
+      relationshipDraft: RealRelationshipDraft
+      connectionOptions: ConnectionSet
+      relationshipOptionsOnRight: boolean
+    }
+  | {
+      state: "disabled"
+    }
+
+type MyEditorState =
+  | {
+      state: "dragging" | "options" | "disabled"
+    }
+  | {
+      state: "connecting"
+
+    }

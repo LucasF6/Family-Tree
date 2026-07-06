@@ -4,7 +4,7 @@ import styles from "./FamilyTree.module.css"
 import { useState, useRef, useEffect } from "react";
 import Person from "@/components/Person";
 import { PointerEvent } from "react";
-import { Connection, ConnectionSet, PersonCardData, RelationshipDraft, Relationship, IndependentDraftData, RealRelationshipDraft, RelationshipDraftBase, RelationshipData } from "@/types";
+import { Connection, ConnectionSet, PersonCardData, RelationshipDraft, Relationship, IndependentDraftData, RealRelationshipDraft, RelationshipDraftBase, RelationshipData, EditorState } from "@/types";
 import ErrorMessage from "@/components/ErrorMessage";
 import { v4 as uuid } from 'uuid'
 import { RelationshipPath } from "@/components/RelationshipPath";
@@ -46,39 +46,6 @@ type RelationshipType =
       children: string[]; // Person IDs
     }
 
-type EditorState =
-  | {
-      state: "dragging"
-    }
-  | {
-      state: "options"
-    }
-  | {
-      state: "connecting"
-      independent: true
-      relationshipDraft: IndependentDraftData
-    }
-  | {
-      state: "connecting"
-      independent: false
-      relationshipDraft: RealRelationshipDraft
-    }
-  | {
-      state: "naming"
-      independent: true
-      relationshipDraft: IndependentDraftData
-    }
-  | {
-      state: "naming"
-      independent: false
-      relationshipDraft: RealRelationshipDraft
-      connectionOptions: ConnectionSet
-      relationshipOptionsOnRight: boolean
-    }
-  | {
-      state: "disabled"
-    }
-
 function createPerson(name: string, initX: number, initY: number) {
   return {
     name: name,
@@ -110,6 +77,10 @@ export default function FamilyTree() {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
   const [height, setHeight] = useState(0)
+
+  if (editorState.state === "connecting") {
+    const myVariable = "hello!"
+  }
   
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -205,7 +176,6 @@ export default function FamilyTree() {
           }
         }
       }))
-      // setMode("options")
       setEditorState({state: "options"})
     } else if (people.byId[id].mode === "options") {
       setPeople(prev => ({
