@@ -285,62 +285,19 @@ export default function FamilyTree() {
     }
   }
 
-  function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
-    if (editorState.state === "connecting") {
-      setPeople(prev => ({
-        ...prev,
-        byId: Object.fromEntries(prev.ids.map(id => [id, {
-          ...prev.byId[id],
-          mode: "disabled"
-        }]))
-      }))
-      if (editorState.independent) {
-        setEditorState({
-          state: "naming",
-          independent: true,
-          relationshipDraft: {
-            from: "none", 
-            newPerson: {
-              positionX: e.clientX - screenPosition.x,
-              positionY: e.clientY - screenPosition.y,
-              width: 80
-            }
-          }
-        })
-      } else {
-        setEditorState({
-          ...editorState,
-          state: "naming",
-          independent: false,
-          relationshipDraft: {
-            ...editorState.relationshipDraft,
-            newPerson: {
-              positionX: mousePosition.current.x - screenPosition.x,
-              positionY: mousePosition.current.y - screenPosition.y,
-              width: 80
-            },
-          },
-          relationshipOptionsOnRight: editorState.relationshipDraft.from === "partner" 
-            ? editorState.relationshipDraft.newPerson.positionX > editorState.relationshipDraft.partner.positionX : true,
-          connectionOptions: getConnectingOptions(editorState.relationshipDraft)
-        })
-      }
-    }
-  }
-
   function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
     mousePosition.current.x = e.clientX
     mousePosition.current.y = e.clientY
-    if (editorState.state === "connecting") {      
-      setEditorState(prev => produce(prev, draft => {
-        if (draft.state !== "connecting") return
-        draft.relationshipDraft.newPerson = {
-          positionX: e.clientX - screenPosition.x,
-          positionY: e.clientY - screenPosition.y,
-          width: draft.relationshipDraft.newPerson.width
-        }
-      }))
-    }
+    // if (editorState.state === "connecting") {      
+    //   setEditorState(prev => produce(prev, draft => {
+    //     if (draft.state !== "connecting") return
+    //     draft.relationshipDraft.newPerson = {
+    //       positionX: e.clientX - screenPosition.x,
+    //       positionY: e.clientY - screenPosition.y,
+    //       width: draft.relationshipDraft.newPerson.width
+    //     }
+    //   }))
+    // }
   }
 
   function handleUpdatePersonNamerConnection(connection: Connection) {
@@ -575,13 +532,55 @@ export default function FamilyTree() {
     setScreenPosition(position)
   }
 
+  function handleChooseNewPersonLocation(pos: Position): void {
+    if (editorState.state !== "connecting") return
+    setPeople(prev => ({
+      ...prev,
+      byId: Object.fromEntries(prev.ids.map(id => [id, {
+        ...prev.byId[id],
+        mode: "disabled"
+      }]))
+    }))
+    if (editorState.independent) {
+      setEditorState({
+        state: "naming",
+        independent: true,
+        relationshipDraft: {
+          from: "none", 
+          newPerson: {
+            positionX: pos.x,
+            positionY: pos.y,
+            width: 80
+          }
+        }
+      })
+    } else {
+      setEditorState({
+        ...editorState,
+        state: "naming",
+        independent: false,
+        relationshipDraft: {
+          ...editorState.relationshipDraft,
+          newPerson: {
+            positionX: pos.x,
+            positionY: pos.y,
+            width: 80
+          },
+        },
+        relationshipOptionsOnRight: editorState.relationshipDraft.from === "partner" 
+          ? editorState.relationshipDraft.newPerson.positionX > editorState.relationshipDraft.partner.positionX : true,
+        connectionOptions: getConnectingOptions(editorState.relationshipDraft)
+      })
+    }
+  }
+
   return (
     <Canvas
       disabled={false}
       updateScreenPosition={handleUpdateScreenPosition}
       updateCanvasDimensions={handleUpdateCanvasDimensions}
-      onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
+      onPointerDown={() => {}}
     >
       {/* replace this with a <Relationships /> component*/}
       {relationshipData.map(relationship => (
@@ -597,14 +596,21 @@ export default function FamilyTree() {
       {editorState.state === "connecting" && (
         <PersonLocationChooser 
           relationshipDraftData={editorState.relationshipDraft}
+          initialPosition={{
+            x: editorState.relationshipDraft.newPerson.positionX,
+            y: editorState.relationshipDraft.newPerson.positionY
+          }}
           screenPositionX={screenPosition.x}
           screenPositionY={screenPosition.y}
           screenWidth={width}
           screenHeight={height}
+          onChooseLocation={handleChooseNewPersonLocation}
         />
       )}
       {/* Replace this with a <People /> component
       to determine modes, it will need personWithOptions
+      it will need access to relationship data in the connecting/naming mode
+      Maybe put the People component  in the <Relationships /> component?
       */}
       {people.ids.map((id, index) => {
         const person = people.byId[id]

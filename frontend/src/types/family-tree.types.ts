@@ -56,35 +56,33 @@ export type NewRelationshipSource =
         | { kind: "person", personId: PersonId }
         | { kind: "relationship", relationshipId: RelationshipId }
 
-export type EditorState = { graph: FamilyGraph } &
-  (
+export type EditorState = {
+  graph: FamilyGraph
+  mode: 
     | {
-        mode: "dragging" | "disabled"
+        type: "dragging" | "disabled"
       }
     | {
-        mode: "options"
+        type: "options"
         personWithOptions: PersonId
       }
     | {
-        // The location of new person is determined by mouse coordinates in PersonLocationChooser
-        mode: "connecting"
+        type: "connecting"
         source: NewRelationshipSource
         initialNewPersonPosition: Position
       }
     | {
-        // whether the list of connection choices appears on the left or right
-        // and the list of connection choices itself is derived state
-        mode: "naming"
+        type: "naming"
         source: Extract<NewRelationshipSource, { kind: "person" }>
         newPersonPosition: Position
         newConnection: Connection
       }
     | {
-        mode: "naming"
+        type: "naming"
         source: Exclude<NewRelationshipSource, { kind: "person" }>
         newPersonPosition: Position
       }
-  )
+}
 
 export type EditorAction =
   | {
