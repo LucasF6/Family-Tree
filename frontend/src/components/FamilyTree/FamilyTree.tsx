@@ -624,25 +624,17 @@ export default function FamilyTree() {
         )
       })}
       {editorState.state === "naming" && (
-        <>
-          {!editorState.independent && (
-            <RelationshipPathDraft
-              relationshipData={editorState.relationshipDraft}
-              screenPositionX={screenPosition.x}
-              screenPositionY={screenPosition.y}
-            />
-          )}
-          <PersonNamer 
-            positionX={editorState.relationshipDraft.newPerson.positionX + screenPosition.x} 
-            positionY={editorState.relationshipDraft.newPerson.positionY + screenPosition.y}
-            onUpdateConnection={handleUpdatePersonNamerConnection}
-            onUpdateWidth={handleUpdatePersonNamerWidth}
-            onSubmit={handlePersonNamerSubmit}
-            includeConnections={editorState.independent ? undefined : editorState.connectionOptions}
-            isConnected={!editorState.independent}
-            right={editorState.independent ? undefined : editorState.relationshipOptionsOnRight}
-          />
-        </>
+        <PersonNamer
+          screenPositionX={screenPosition.x}
+          screenPositionY={screenPosition.y}
+          relationshipDraft={editorState.relationshipDraft}
+          onUpdateConnection={handleUpdatePersonNamerConnection}
+          onUpdateWidth={handleUpdatePersonNamerWidth}
+          onSubmit={handlePersonNamerSubmit}
+          includeConnections={editorState.independent ? undefined : editorState.connectionOptions}
+          isConnected={!editorState.independent}
+          right={editorState.independent ? undefined : editorState.relationshipOptionsOnRight}
+        />
       )}
       <Overlay 
         disabled={["connecting", "naming", "disabled"].includes(editorState.state)}

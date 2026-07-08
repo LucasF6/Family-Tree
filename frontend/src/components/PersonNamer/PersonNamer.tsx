@@ -3,12 +3,14 @@
 import { useState, useRef } from "react"
 import styles from "./PersonNamer.module.css"
 import { KeyboardEvent, ChangeEvent } from "react";
-import { Connection } from "@/types";
+import { Connection, RealRelationshipDraft, RelationshipDraft } from "@/types";
 import RelationshipOptions from "@/components/RelationshipOptions";
+import { RelationshipPathDraft } from "../RelationshipPath";
 
 type PersonNamerProps = {
-  positionX: number;
-  positionY: number;
+  relationshipDraft: RelationshipDraft
+  screenPositionX: number
+  screenPositionY: number
   isConnected?: boolean;
   includeConnections?: [Connection] | [Connection, Connection] | [Connection, Connection, Connection]
   onUpdateConnection?: (connection: Connection) => void;
@@ -17,11 +19,14 @@ type PersonNamerProps = {
   right?: boolean;
 }
 
-export default function PersonNamer({ positionX, positionY, isConnected = false, onUpdateConnection, onUpdateWidth, onSubmit, right = false, includeConnections }: PersonNamerProps) {
+export default function PersonNamer({ screenPositionX, screenPositionY, relationshipDraft, isConnected = false, onUpdateConnection, onUpdateWidth, onSubmit, right = false, includeConnections }: PersonNamerProps) {
   const [name, setName] = useState("")
   const [width, setWidth] = useState(80.02)
   const [connection, setConnection] = useState<Connection>("partner")
   const ref = useRef<HTMLDivElement>(null)
+
+  const positionX = relationshipDraft.newPerson.positionX + screenPositionX
+  const positionY = relationshipDraft.newPerson.positionY + screenPositionY
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
@@ -48,6 +53,11 @@ export default function PersonNamer({ positionX, positionY, isConnected = false,
 
   return (
     <>
+      {relationshipDraft.from !== "none" && <RelationshipPathDraft
+        relationshipData={relationshipDraft}
+        screenPositionX={screenPositionX}
+        screenPositionY={screenPositionY}
+      />}
       {isConnected && includeConnections && (
         <RelationshipOptions 
           positionX={right ? positionX + width / 2 + 70 + 20 : positionX - width / 2 - 70 - 20}

@@ -95,6 +95,10 @@ export type EditorAction =
       type: "CANCELED"
     }
   | {
+      type: "DRAGGED_PERSON"
+      person: PersonId
+    }
+  | {
       type: "BEGAN_ADDING_PERSON"
       mousePosition: Position
     }

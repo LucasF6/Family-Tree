@@ -18,6 +18,15 @@ export default function familyTreeReducer(draft: EditorState, action: EditorActi
       draft.mode = "dragging"
       break
     }
+    case "DRAGGED_PERSON": {
+      let index = draft.graph.peopleIds.indexOf(action.person)
+      draft.graph.peopleIds = [
+        ...draft.graph.peopleIds.slice(0, index),
+        ...draft.graph.peopleIds.slice(index + 1),
+        action.person
+      ]
+      break
+    }
     case "BEGAN_ADDING_PERSON": {
       return {
         ...draft,
