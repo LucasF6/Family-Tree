@@ -47,6 +47,8 @@ export default function Person({ name, positionX, positionY, updatePosition, upd
   const justClosedOptionsBubble = useRef(false)
   const ref = useRef<HTMLDivElement>(null)
 
+  console.log(`render ${name}`)
+
   // Note: this runs everytime the list of people in FamilyTree is re-ordered rather
   // than just when this Person component is initially mounted
   useLayoutEffect(() => {

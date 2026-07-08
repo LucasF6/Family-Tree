@@ -14,8 +14,6 @@ import PersonLocationChooser from "@/components/PersonLocationChooser";
 import Overlay from "@/components/Overlay";
 import { FamilyTreeMode } from "@/types";
 import { produce } from "immer";
-import Canvas from "../Canvas";
-import { Position } from "@/types/family-tree.types";
 
 type RelationshipType =
   | {
@@ -51,14 +49,17 @@ const defaultPeople = {
   childrenByParentId: {}
 } as People
 
-export default function FamilyTree() {
+export default function FamilyTreeAlt() {
   const [editorState, setEditorState] = useState<EditorState>({state: "dragging"})
   const [people, setPeople] = useState<People>(defaultPeople)
   const [relationships, setRelationships] = useState<RelationshipType[]>([])
+  const isDragging = useRef(false)
   const mousePosition = useRef({x: 0, y: 0})
-  const [screenPosition, setScreenPosition] = useState<Position>({x: 0, y: 0})
+  const [screenPosition, setScreenPosition] = useState({x: 0, y: 0})
+  const dragOffset = useRef({x: 0, y: 0}) // This can be a ref
   const [errorMessage, setErrorMessage] = useState("")
   const [errorMessageKey, setErrorMessageKey] = useState("")
+  const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
   const [height, setHeight] = useState(0)
   
@@ -97,6 +98,19 @@ export default function FamilyTree() {
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [editorState.state, startAddingNewPerson]) // May change this later to fix wrong-location bug in person-creation
+
+  useEffect(() => {
+    if (!ref.current) return
+
+    const observer = new ResizeObserver(([entry]) => {
+      setWidth(entry.contentRect.width)
+      setHeight(entry.contentRect.height)
+    })
+
+    observer.observe(ref.current)
+
+    return () => observer.disconnect()
+  }, [])
 
   const relationshipData: Relationship[] = relationships.map(relationship => (
     relationship.type === "partner-partner"
@@ -286,7 +300,14 @@ export default function FamilyTree() {
   }
 
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
-    if (editorState.state === "connecting") {
+    if (["dragging", "naming"].includes(editorState.state)) {
+      isDragging.current = true
+      e.currentTarget.setPointerCapture(e.pointerId)
+      dragOffset.current = {
+        x: screenPosition.x - e.clientX,
+        y: screenPosition.y - e.clientY
+      }
+    } else if (editorState.state === "connecting") {
       setPeople(prev => ({
         ...prev,
         byId: Object.fromEntries(prev.ids.map(id => [id, {
@@ -328,10 +349,34 @@ export default function FamilyTree() {
     }
   }
 
+  function handlePointerUp(e: PointerEvent<HTMLDivElement>) {
+    isDragging.current = false
+    e.currentTarget.releasePointerCapture(e.pointerId)
+  }
+
   function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
     mousePosition.current.x = e.clientX
     mousePosition.current.y = e.clientY
-    if (editorState.state === "connecting") {      
+    if (isDragging.current && ["dragging", "naming"].includes(editorState.state)) {
+      setScreenPosition({
+        x: e.clientX + dragOffset.current.x,
+        y: e.clientY + dragOffset.current.y
+      })
+    } else if (editorState.state === "connecting") {
+      // setEditorState(prev => {
+      //   if (prev.state !== "connecting") return prev;
+      //   return {
+      //     ...prev,
+      //     relationshipDraft: {
+      //       ...prev.relationshipDraft,
+      //       newPerson: {
+      //         positionX: e.clientX - screenPosition.x,
+      //         positionY: e.clientY - screenPosition.y,
+      //         width: prev.relationshipDraft.newPerson.width
+      //       }
+      //     }
+      //   } as typeof prev
+      // })
       setEditorState(prev => produce(prev, draft => {
         if (draft.state !== "connecting") return
         draft.relationshipDraft.newPerson = {
@@ -566,22 +611,14 @@ export default function FamilyTree() {
     setEditorState({state: "dragging"})
   }
 
-  function handleUpdateCanvasDimensions(width: number, height: number) {
-    setWidth(width)
-    setHeight(height)
-  }
-
-  function handleUpdateScreenPosition(position: Position) {
-    setScreenPosition(position)
-  }
-
   return (
-    <Canvas
-      disabled={false}
-      updateScreenPosition={handleUpdateScreenPosition}
-      updateCanvasDimensions={handleUpdateCanvasDimensions}
+    // Replace this div with a <Canvas></Canvas> component
+    <div 
+      className={styles.container}
       onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}
+      ref={ref}
     >
       {/* replace this with a <Relationships /> component*/}
       {relationshipData.map(relationship => (
@@ -650,6 +687,6 @@ export default function FamilyTree() {
         helpText={editorState.state}
       /> 
       <ErrorMessage message={errorMessage} key={errorMessageKey} />
-    </Canvas>
+    </div>
   );
 }
