@@ -5,7 +5,7 @@ type AddPersonButtonProps = {
   onClick: () => void;
 }
 
-export default function AddPersonButton({ disabled, onClick }: AddPersonButtonProps) {
+export function AddPersonButton({ disabled, onClick }: AddPersonButtonProps) {
   return (
     <button
       className={clsx(

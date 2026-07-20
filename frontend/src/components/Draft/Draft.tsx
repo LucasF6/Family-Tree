@@ -1,0 +1,80 @@
+import { Connection, DraftMode, EditorAction, EditorMode, FamilyGraph, NewRelationshipSourceWithConnection, PersonSpatialData, Position } from "@/types/family-tree.types"
+import { PersonDraft } from "./PersonDraft"
+import { useState } from "react"
+import { RelationshipDraft } from "./RelationshipDraft"
+
+type DraftProps = {
+  graph: FamilyGraph
+  mode: Extract<EditorMode, { type: DraftMode }>
+  dispatch: (action: EditorAction) => void
+}
+
+export default function Draft({ graph, mode, dispatch }: DraftProps) {
+  const [connection, setConnection] = useState<Connection>("partner")
+  const [newPersonWidth, setNewPersonWidth] = useState(80)
+  const [newPersonPosition, setNewPersonPosition] = useState<Position>(mode.type === "choosing-connection" ? { x: 0, y: 0 } : mode.newPersonPosition)
+
+  let newPersonData: PersonSpatialData
+  if (mode.type === "choosing-connection") {
+    newPersonData = graph.peopleById[mode.newPerson]
+  } else if (mode.type === "connecting" && mode.focusedPerson !== null) {
+    newPersonData = graph.peopleById[mode.focusedPerson]
+  } else {
+    newPersonData = {
+      position: newPersonPosition,
+      width: newPersonWidth
+    }
+  }
+
+  let source: NewRelationshipSourceWithConnection
+  if (mode.source.kind !== "person") {
+    source = mode.source
+  } else {
+    source = {
+      ...mode.source,
+      connection
+    }
+  }
+
+  let includeConnections: undefined | [Connection, Connection] | [Connection, Connection, Connection]
+  let initialConnection: undefined | Connection
+  switch (source.kind) {
+    case "person":
+      initialConnection = "partner"
+      const relationshipIdWithParents = graph.relationshipIds.find(relId => graph.relationshipsById[relId].children.find(id => id === source.personId))
+      if (relationshipIdWithParents && graph.relationshipsById[relationshipIdWithParents].parents.length === 2) {
+        includeConnections = ["partner", "child"]
+      } else {
+        includeConnections = ["parent", "partner", "child"]
+      }
+      break
+  }
+
+  let showPersonDraft = true
+  if (mode.type === "connecting") {
+    showPersonDraft = mode.focusedPerson === null
+  }
+
+  return (
+    <>
+      {source.kind !== "none" && (
+        <RelationshipDraft 
+          newPersonData={newPersonData}
+          source={source}
+          peopleById={graph.peopleById}
+          relationshipsById={graph.relationshipsById}
+        />
+      )}
+      {showPersonDraft && <PersonDraft 
+        mode={mode}
+        initialConnection={initialConnection}
+        includeConnections={includeConnections}
+        onUpdateConnection={connection => setConnection(connection)}
+        onUpdatePosition={position => setNewPersonPosition(position)}
+        onUpdateWidth={width => setNewPersonWidth(width)}
+        dispatch={dispatch}
+      />}
+    </>
+  )
+}
+

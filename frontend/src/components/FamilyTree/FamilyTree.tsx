@@ -1,653 +1,132 @@
 'use client'
 
-import styles from "./FamilyTree.module.css"
 import { useState, useRef, useEffect } from "react";
-import Person from "@/components/Person";
-import { PointerEvent } from "react";
-import { Connection, ConnectionSet, PersonCardData, RelationshipDraft, Relationship, IndependentDraftData, RealRelationshipDraft, RelationshipDraftBase, RelationshipData, EditorState, People, PersonType } from "@/types";
-import ErrorMessage from "@/components/ErrorMessage";
-import { v4 as uuid } from 'uuid'
-import { RelationshipPath } from "@/components/RelationshipPath";
-import { RelationshipPathDraft } from "@/components/RelationshipPath"
-import PersonNamer from "@/components/PersonNamer";
-import PersonLocationChooser from "@/components/PersonLocationChooser";
+import { EditorAction, EditorMode, EditorState, PersonId } from "@/types/family-tree.types"
+import { Relationships } from "@/components/Relationships";
 import Overlay from "@/components/Overlay";
-import { FamilyTreeMode } from "@/types";
-import { produce } from "immer";
-import Canvas from "../Canvas";
+import Canvas from "@/components/Canvas";
 import { Position } from "@/types/family-tree.types";
+import { useImmerReducer } from "use-immer";
+import familyTreeReducer from "./familyTreeReducer";
+import People from "@/components/People";
+import OptionsBubble from "@/components/OptionsBubble";
+import Draft from "@/components/Draft";
+import { useCoordinates } from "../Canvas/context";
 
-type RelationshipType =
-  | {
-      type: "parent-child";
-      id: string;
-      parent: string; // Person ID
-      child: string; // Person ID
-    }
-  | {
-      type: "partner-partner";
-      
-      id: string;
-      firstPartner: string; // Person ID
-      secondPartner: string; // Person ID
-      children: string[]; // Person IDs
-    }
-
-function createPerson(name: string, initX: number, initY: number) {
-  return {
-    name: name,
-    id: uuid(),
-    positionX: initX,
-    positionY: initY,
-    mode: "draggable",
-    width: 0,
-  } as PersonType
+const defaultState: EditorState = {
+  graph: {
+    peopleById: {},
+    peopleIds: [],
+    relationshipsById: {},
+    relationshipIds: []
+  },
+  mode: { type: "dragging" }
 }
 
-const defaultPeople = {
-  byId: {},
-  ids: [],
-  parentsByChildId: {},
-  childrenByParentId: {}
-} as People
-
 export default function FamilyTree() {
-  const [editorState, setEditorState] = useState<EditorState>({state: "dragging"})
-  const [people, setPeople] = useState<People>(defaultPeople)
-  const [relationships, setRelationships] = useState<RelationshipType[]>([])
-  const mousePosition = useRef({x: 0, y: 0})
-  const [screenPosition, setScreenPosition] = useState<Position>({x: 0, y: 0})
-  const [errorMessage, setErrorMessage] = useState("")
-  const [errorMessageKey, setErrorMessageKey] = useState("")
-  const [width, setWidth] = useState(0)
-  const [height, setHeight] = useState(0)
+  const [editorState, dispatch] = useImmerReducer<EditorState, EditorAction>(familyTreeReducer, defaultState)
+  const mousePosition = useRef<Position>({ x: 0, y: 0 })
+  const panPosition = useRef<Position>({ x: 0, y: 0 })
   
+  const { peopleById } = editorState.graph
+  const mode = editorState.mode
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        if (["connecting", "naming", "options"].includes(editorState.state)) {
-          setEditorState({state: "dragging"})
-          setPeople(prev => (
-            {
-              ...prev,
-              byId: Object.fromEntries(prev.ids.map(personId => ([personId, {
-                ...prev.byId[personId],
-                mode: "draggable"
-              }])))
-            }
-          ))
+        if (["connecting", "naming", "options"].includes(editorState.mode.type)) {
+          dispatch({
+            type: "CANCELED"
+          })
         }
       } else if (e.key === "c") {
-        if (["dragging", "options"].includes(editorState.state)) {
+        if (["dragging", "options"].includes(editorState.mode.type)) {
           startAddingNewPerson()
         }
-      } else if (e.key === "q") {
-        console.log(mousePosition.current.x, mousePosition.current.y)
-        if (editorState.state === "connecting") {
-          console.log(editorState.relationshipDraft.newPerson.positionX + screenPosition.x, editorState.relationshipDraft.newPerson.positionY + screenPosition.y)
-        }
-      }
+      } 
     }
     
-    if (editorState.state !== "disabled") {
+    if (editorState.mode.type !== "disabled") {
       document.addEventListener('keydown', handleKeyDown)
     }
     
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [editorState.state, startAddingNewPerson]) // May change this later to fix wrong-location bug in person-creation
-
-  const relationshipData: Relationship[] = relationships.map(relationship => (
-    relationship.type === "partner-partner"
-      ? {
-          type: "couple",
-          firstPartner: people.byId[relationship.firstPartner],
-          secondPartner: people.byId[relationship.secondPartner],
-          children: relationship.children.map(child => people.byId[child]),
-          relationshipId: relationship.id
-        }
-      : {
-          type: "parent-child",
-          parent: people.byId[relationship.parent],
-          child: people.byId[relationship.child],
-          relationshipId: relationship.id 
-        }
-  ))
+  }, [editorState.mode])
   
-  function updateErrorMessage(message: string) {
-    setErrorMessage(message)
-    setErrorMessageKey(uuid())
-  }
-  
-  function handleClick(id: string) {
-    let index = people.ids.indexOf(id)
-    setPeople(prev => ({
-      ...prev,
-      ids: [
-        ...prev.ids.slice(0, index),
-        ...prev.ids.slice(index + 1),
-        prev.ids[index]
-      ]
-    }))
-  }
-  
-  function handleOptions(id: string) {
-    if (people.byId[id].mode === "draggable") {
-      setPeople(prev => ({
-        ...prev,
-        byId: {
-          ...prev.byId,
-          [id]: {
-            ...prev.byId[id],
-            mode: "options"
-          }
-        }
-      }))
-      setEditorState({state: "options"})
-    } else if (people.byId[id].mode === "options") {
-      setPeople(prev => ({
-        ...prev,
-        byId: {
-          ...prev.byId,
-          [id]: {
-            ...prev.byId[id],
-            mode: "draggable" // Do i need to set everyone to draggable?
-          }
-        }
-      }))
-      setEditorState({state: "dragging"})
-    }
-  }
-  
-  function handleConnect(personId: string, clientX: number, clientY: number) {
-    if (editorState.state !== "connecting") {
-      setPeople(prev => ({
-        ...prev,
-        byId: Object.fromEntries(prev.ids.map(id => [id, {
-          ...prev.byId[id],
-          mode: personId === id ? "disabled" : "connectable"
-        }]))
-      }))
-      setEditorState({
-        state: "connecting",
-        independent: false,
-        relationshipDraft: {
-          from: "partner",
-          partner: people.byId[personId],
-          connectingId: personId,
-          newPerson: {
-            positionX: clientX - screenPosition.x,
-            positionY: clientY - screenPosition.y,
-            width: 80
-          }
-        }
-      })
-    }
+  function handleConnect(personId: PersonId) {
+    dispatch({
+      type: "BEGAN_ADDING_PERSON_FROM_PERSON",
+      personId,
+      startPosition: {
+        x: mousePosition.current.x - panPosition.current.x,
+        y: mousePosition.current.y - panPosition.current.y
+      }
+    })
   }
   
   function startAddingNewPerson() {
-    setPeople(prev => ({
-      ...prev,
-      byId: Object.fromEntries(prev.ids.map(id => [id, {
-        ...prev.byId[id],
-        mode: "disabled"
-      }]))
-    }))
-    setEditorState({
-      state: "connecting",
-      independent: true,
-      relationshipDraft: {
-        from: "none",
-        newPerson: {
-          positionX: mousePosition.current.x - screenPosition.x,
-          positionY: mousePosition.current.y - screenPosition.y,
-          width: 80
-        }
+    dispatch({
+      type: "BEGAN_ADDING_PERSON",
+      startPosition: {
+        x: mousePosition.current.x - panPosition.current.x,
+        y: mousePosition.current.y - panPosition.current.y
       }
     })
   }
 
-  function handleAddPersonFromRelationship(relationship: Relationship) {
-    if (relationship.type === "couple") {
-      setEditorState({
-        state: "connecting",
-        independent: false,
-        relationshipDraft: {
-          from: "couple",
-          firstPartner: relationship.firstPartner,
-          secondPartner: relationship.secondPartner,
-          newPerson: {
-            positionX: mousePosition.current.x - screenPosition.x,
-            positionY: mousePosition.current.y - screenPosition.y,
-            width: 80
-          },
-          connectingId: relationship.relationshipId
-        }
-      })
-    } else {
-      setEditorState({
-        state: "connecting",
-        independent: false,
-        relationshipDraft: {
-          from: "parent-child",
-          parent: relationship.parent,
-          child: relationship.child,
-          newPerson: {
-            positionX: mousePosition.current.x - screenPosition.x,
-            positionY: mousePosition.current.y - screenPosition.y,
-            width: 80
-          },
-          connectingId: relationship.relationshipId
-        }
-      })
-    }
+  function handleUpdateMousePosition(position: Position) {
+    mousePosition.current = position
   }
 
-  function handleUpdatePosition(id: string, x: number, y: number) {
-    setPeople(prev => ({
-      ...prev,
-      byId: {
-        ...prev.byId,
-        [id]: {
-          ...prev.byId[id],
-          positionX: x - screenPosition.x,
-          positionY: y - screenPosition.y
-        }
-      }
-    }))
+  function handleUpdatePanPosition(position: Position) {
+    panPosition.current = position
   }
 
-  function handleUpdateWidth(id: string, width: number) {
-    setPeople(prev => ({
-      ...prev,
-      byId: {
-        ...prev.byId,
-        [id]: {
-          ...prev.byId[id],
-          width
-        }
-      }
-    }))
-  }
-
-  function getConnectingOptions(draft: RealRelationshipDraft): ConnectionSet {
-    switch (draft.from) {
-      case "couple":
-      case "parent-child":
-        return ["child"]
-      default:
-        if (people.parentsByChildId[draft.connectingId]?.length === 2) {
-          return ["partner", "child"]
-        } else {
-          return ["parent", "partner", "child"]
-        }
-    }
-  }
-
-  function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
-    mousePosition.current.x = e.clientX
-    mousePosition.current.y = e.clientY
-    // if (editorState.state === "connecting") {      
-    //   setEditorState(prev => produce(prev, draft => {
-    //     if (draft.state !== "connecting") return
-    //     draft.relationshipDraft.newPerson = {
-    //       positionX: e.clientX - screenPosition.x,
-    //       positionY: e.clientY - screenPosition.y,
-    //       width: draft.relationshipDraft.newPerson.width
-    //     }
-    //   }))
-    // }
-  }
-
-  function handleUpdatePersonNamerConnection(connection: Connection) {
-    setEditorState(prev => {
-      if (prev.state !== "naming" || prev.independent || prev.relationshipDraft.from === "couple" || prev.relationshipDraft.from === "parent-child") {
-        return prev
-      }
-      let personConnecting: PersonCardData
-      switch (prev.relationshipDraft.from) {
-        case "parent": personConnecting = prev.relationshipDraft.parent; break
-        case "partner": personConnecting = prev.relationshipDraft.partner; break
-        case "child": personConnecting = prev.relationshipDraft.child; break
-      }
-      const next = {...prev}
-      switch (connection) {
-        case "parent": next.relationshipDraft = {...next.relationshipDraft, from: "child", child: personConnecting}; break
-        case "partner": next.relationshipDraft = {...next.relationshipDraft, from: "partner", partner: personConnecting}; break
-        case "child": next.relationshipDraft = {...next.relationshipDraft, from: "parent", parent: personConnecting}; break
-      }
-      return next
-    })
-  }
-
-  function handleUpdatePersonNamerWidth(width: number){
-    setEditorState(prev => {
-      if (prev.state === "connecting" || prev.state === "naming") {
-        const next = {...prev}
-        next.relationshipDraft.newPerson.width = width
-        return next
-      }
-      return prev
-    })
-  }
-
-  function handlePersonNamerSubmit(name: string) {
-    if (name === "") {
-      updateErrorMessage("Error: Empty text")
-      return
-    }
-    if (editorState.state !== "naming") {
-      return
-    }
-    let newPerson = createPerson(name, editorState.relationshipDraft.newPerson.positionX, editorState.relationshipDraft.newPerson.positionY)
-    setPeople(prev => {
-      const next = {
-        ...prev,
-        byId: {
-          ...Object.fromEntries(
-            prev.ids.map((id) => [
-              id,
-              {
-                ...prev.byId[id],
-                mode: "draggable",
-              } as PersonType,
-            ]),
-          ),
-          [newPerson.id]: newPerson,
-        },
-        ids: [...prev.ids, newPerson.id],
-      }
-      if (editorState.independent) {
-        return next
-      }
-      switch (editorState.relationshipDraft.from) {
-        case "child": {
-          // The relationship draft being from a child means new person is their parent
-          // This condition should never be true
-          if (prev.parentsByChildId[editorState.relationshipDraft.connectingId]?.length === 2) {
-            return prev
-          }
-          next.childrenByParentId = {
-            ...next.childrenByParentId,
-            [newPerson.id]: [
-              editorState.relationshipDraft.connectingId
-            ]
-          }
-          next.parentsByChildId = {
-            ...next.parentsByChildId,
-            [editorState.relationshipDraft.connectingId]: [
-              ...prev.parentsByChildId[editorState.relationshipDraft.connectingId] || [],
-              newPerson.id
-            ] as [string] | [string, string]
-          }
-          break
-        } 
-        case "parent": {
-          // The relationship draft being from a parent means new person is their child
-          next.childrenByParentId = {
-            ...next.childrenByParentId,
-            [editorState.relationshipDraft.connectingId]: [
-              ...prev.childrenByParentId[editorState.relationshipDraft.connectingId] || [],
-              newPerson.id
-            ]
-          }
-          next.parentsByChildId = {
-            ...next.parentsByChildId,
-            [newPerson.id]: [
-              editorState.relationshipDraft.connectingId
-            ]
-          }
-          break
-        }
-        case "couple": {
-          // The relationship draft being from a couple means the new person is their child
-          const relationship = relationships.find(rel => rel.id === editorState.relationshipDraft.connectingId)
-          // This condition should never be true
-          if (relationship?.type !== "partner-partner") {
-            return prev
-          }
-          next.childrenByParentId = {
-            ...next.childrenByParentId,
-            [relationship.firstPartner]: [
-              ...next.childrenByParentId[relationship.firstPartner] || [],
-              newPerson.id
-            ],
-            [relationship.secondPartner]: [
-              ...next.childrenByParentId[relationship.secondPartner] || [],
-              newPerson.id
-            ]
-          }
-          next.parentsByChildId = {
-            ...next.parentsByChildId,
-            [newPerson.id]: [relationship.firstPartner, relationship.secondPartner]
-          }
-          break
-        }
-        case "parent-child": {
-          // The relationship draft being from a parent child means new person is a child of the parent
-          const relationship = relationships.find(rel => rel.id === editorState.relationshipDraft.connectingId)
-          // This condition should never be true
-          if (relationship?.type !== "parent-child") {
-            return prev
-          }
-          next.childrenByParentId = {
-            ...next.childrenByParentId,
-            [relationship.parent]: [
-              ...prev.childrenByParentId[relationship.parent] || [],
-              newPerson.id
-            ]
-          }
-          next.parentsByChildId = {
-            ...next.parentsByChildId,
-            [newPerson.id]: [
-              relationship.parent
-            ]
-          }
-          break
-        }
-      }
-      return next;
-    });
-    if (!editorState.independent) {
-      setRelationships(prev => {
-        let newRelationship: RelationshipType;
-        let next = [...prev]
-        switch (editorState.relationshipDraft.from) {
-          case "child":
-            let parents = people.parentsByChildId[editorState.relationshipDraft.connectingId] || []
-            if (parents.length === 1) {
-              next = next.filter(rel => rel.type !== "parent-child" || rel.parent !== parents[0] || rel.child !== editorState.relationshipDraft.connectingId)
-              newRelationship = {
-                type: "partner-partner",
-                id: uuid(),
-                firstPartner: parents[0],
-                secondPartner: newPerson.id,
-                children: [editorState.relationshipDraft.connectingId]
-              }
-            } else {
-              newRelationship = {
-                type: "parent-child",
-                id: uuid(),
-                parent: newPerson.id,
-                child: editorState.relationshipDraft.connectingId
-              }
-            }
-            break
-          case "partner":
-            newRelationship = {
-              type: "partner-partner",
-              id: uuid(),
-              firstPartner: editorState.relationshipDraft.connectingId,
-              secondPartner: newPerson.id,
-              children: []
-            }
-            break
-          case "parent":
-            newRelationship = {
-              type: "parent-child",
-              id: uuid(),
-              parent: editorState.relationshipDraft.connectingId,
-              child: newPerson.id
-            }
-            break
-          case "couple": {
-            const relationship = next.find(rel => rel.id === editorState.relationshipDraft.connectingId)
-            // This condition should never be true
-            if (relationship?.type !== "partner-partner") return prev
-            next = next.filter(rel => rel.id !== editorState.relationshipDraft.connectingId)
-            newRelationship = {
-              ...relationship,
-              id: uuid(),
-              children: [...relationship.children, newPerson.id]
-            }
-            break
-          }
-          case "parent-child": {
-            const relationship = next.find(rel => rel.id === editorState.relationshipDraft.connectingId)
-            // This condition should never be true
-            if (relationship?.type !== "parent-child") return prev
-            newRelationship = {
-              type: "parent-child",
-              id: uuid(),
-              parent: relationship.parent,
-              child: newPerson.id
-            }
-            break
-          }
-        }
-        next.push(newRelationship)
-        return next
-      })
-    }
-    setEditorState({state: "dragging"})
-  }
-
-  function handleUpdateCanvasDimensions(width: number, height: number) {
-    setWidth(width)
-    setHeight(height)
-  }
-
-  function handleUpdateScreenPosition(position: Position) {
-    setScreenPosition(position)
-  }
-
-  function handleChooseNewPersonLocation(pos: Position): void {
-    if (editorState.state !== "connecting") return
-    setPeople(prev => ({
-      ...prev,
-      byId: Object.fromEntries(prev.ids.map(id => [id, {
-        ...prev.byId[id],
-        mode: "disabled"
-      }]))
-    }))
-    if (editorState.independent) {
-      setEditorState({
-        state: "naming",
-        independent: true,
-        relationshipDraft: {
-          from: "none", 
-          newPerson: {
-            positionX: pos.x,
-            positionY: pos.y,
-            width: 80
-          }
-        }
-      })
-    } else {
-      setEditorState({
-        ...editorState,
-        state: "naming",
-        independent: false,
-        relationshipDraft: {
-          ...editorState.relationshipDraft,
-          newPerson: {
-            positionX: pos.x,
-            positionY: pos.y,
-            width: 80
-          },
-        },
-        relationshipOptionsOnRight: editorState.relationshipDraft.from === "partner" 
-          ? editorState.relationshipDraft.newPerson.positionX > editorState.relationshipDraft.partner.positionX : true,
-        connectionOptions: getConnectingOptions(editorState.relationshipDraft)
-      })
-    }
+  function editorIsDrafting(mode: EditorMode): mode is Extract<EditorMode, { type: "choosing-connection" | "connecting" | "naming" }> {
+    return mode.type === "choosing-connection" || mode.type === "naming" || mode.type === "connecting"
   }
 
   return (
-    <Canvas
-      disabled={false}
-      updateScreenPosition={handleUpdateScreenPosition}
-      updateCanvasDimensions={handleUpdateCanvasDimensions}
-      onPointerMove={handlePointerMove}
-      onPointerDown={() => {}}
-    >
-      {/* replace this with a <Relationships /> component*/}
-      {relationshipData.map(relationship => (
-        <RelationshipPath 
-          key={relationship.relationshipId}
-          screenPositionX={screenPosition.x}
-          screenPositionY={screenPosition.y}
-          relationshipData={relationship}
-          onClick={() => handleAddPersonFromRelationship(relationship)}
-          disabled={editorState.state !== "dragging"}
-        />
-      ))}
-      {editorState.state === "connecting" && (
-        <PersonLocationChooser 
-          relationshipDraftData={editorState.relationshipDraft}
-          initialPosition={{
-            x: editorState.relationshipDraft.newPerson.positionX,
-            y: editorState.relationshipDraft.newPerson.positionY
-          }}
-          screenPositionX={screenPosition.x}
-          screenPositionY={screenPosition.y}
-          screenWidth={width}
-          screenHeight={height}
-          onChooseLocation={handleChooseNewPersonLocation}
-        />
-      )}
-      {/* Replace this with a <People /> component
-      to determine modes, it will need personWithOptions
-      it will need access to relationship data in the connecting/naming mode
-      Maybe put the People component  in the <Relationships /> component?
-      */}
-      {people.ids.map((id, index) => {
-        const person = people.byId[id]
-        return (
-          <Person
-            name={person.name}
-            positionX={person.positionX + screenPosition.x}
-            positionY={person.positionY + screenPosition.y}
-            updatePosition={(x, y) => handleUpdatePosition(id, x, y)}
-            updateWidth={width => handleUpdateWidth(id, width)}
-            onClick={() => handleClick(id)}
-            onOptions={() => handleOptions(id)}
-            onConnect={(clientX, clientY) => handleConnect(id, clientX, clientY)}
-            mode={person.mode}
-            key={id}
+    <>
+      <Canvas
+        disabled={false}
+        onUpdateMousePosition={handleUpdateMousePosition}
+        onUpdatePanPosition={handleUpdatePanPosition}
+        overlay={(
+          <Overlay 
+            disabled={["connecting", "naming", "disabled"].includes(editorState.mode.type)}
+            onAddPerson={startAddingNewPerson}
+            helpText={editorState.mode.type}
           />
-        )
-      })}
-      {editorState.state === "naming" && (
-        <PersonNamer
-          screenPositionX={screenPosition.x}
-          screenPositionY={screenPosition.y}
-          relationshipDraft={editorState.relationshipDraft}
-          onUpdateConnection={handleUpdatePersonNamerConnection}
-          onUpdateWidth={handleUpdatePersonNamerWidth}
-          onSubmit={handlePersonNamerSubmit}
-          includeConnections={editorState.independent ? undefined : editorState.connectionOptions}
-          isConnected={!editorState.independent}
-          right={editorState.independent ? undefined : editorState.relationshipOptionsOnRight}
+        )}
+      >
+        <Relationships 
+          graph={editorState.graph}
+          disabled={editorState.mode.type !== "dragging"}
+          dispatch={dispatch}
         />
-      )}
-      <Overlay 
-        disabled={["connecting", "naming", "disabled"].includes(editorState.state)}
-        onAddPerson={startAddingNewPerson}
-        helpText={editorState.state}
-      /> 
-      <ErrorMessage message={errorMessage} key={errorMessageKey} />
-    </Canvas>
+        {editorState.mode.type === "options" && (
+          <OptionsBubble 
+            person={peopleById[editorState.mode.personWithOptions]}
+            onConnect={handleConnect}
+            onEdit={() => {}}
+            onPage={() => {}}
+          />
+        )}
+        {editorIsDrafting(mode) && (
+          <Draft
+            graph={editorState.graph}
+            mode={mode}
+            dispatch={dispatch}
+          />
+        )}
+        <People 
+          editorState={editorState}
+          dispatch={dispatch}
+        />
+      </Canvas>
+    </>
   );
 }

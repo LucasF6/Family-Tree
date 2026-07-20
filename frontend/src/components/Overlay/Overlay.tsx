@@ -1,5 +1,5 @@
-import AddPersonButton from "@/components/AddPersonButton";
-import { FamilyTreeMode } from "@/types";
+import { AddPersonButton } from "./AddPersonButton";
+import { FamilyTreeMode } from "@/types/family-tree.types"
 
 type OverlayProps = {
   disabled: boolean;
@@ -7,12 +7,13 @@ type OverlayProps = {
   helpText: FamilyTreeMode // What help text appears on the bottom right depends on the mode
 }
 
-const helpTextByMode: Record<FamilyTreeMode, string> = {
+const helpTextByMode: Record<string, string> = {
   dragging: "Hit c to create",
   connecting: "Hit esc to go back",
   naming: "Hit esc to go back\nHit enter to submit",
   options: "Hit esc to go back\nHit c to create",
-  disabled: ""
+  disabled: "",
+  "choosing-connection": ""
 }
 
 export default function Overlay({ disabled, onAddPerson, helpText }: OverlayProps) {
