@@ -1,5 +1,5 @@
 import { Dimensions, Position } from "@/types/family-tree.types";
-import { PointerEvent, useRef, useEffect, useState } from "react";
+import { PointerEvent, useRef, useEffect, useState, WheelEvent } from "react";
 import { CanvasProvider, CoordinatesContext, CoordinatesContextValue, MousePositionContextValue, ViewportContext } from "./CanvasProvider";
 import KeyboardShortcuts from "../KeyboardShortcuts";
 
@@ -17,6 +17,7 @@ export default function Canvas({ children, overlay, disabled }: CanvasProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [viewport, setViewport] = useState<Dimensions | null>(null)
   const mousePosition = useRef<Position>({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
 
   const coordinates: CoordinatesContextValue = {
     screenToWorld(screenPosition: Position): Position {
@@ -87,6 +88,10 @@ export default function Canvas({ children, overlay, disabled }: CanvasProps) {
       y: e.clientY
     }
   }
+
+  function handleWheel(e: WheelEvent<HTMLDivElement>) {
+    // setZoom(zoom => zoom - 0.001 * e.deltaY)
+  }
   
   return (
     <CanvasProvider
@@ -94,24 +99,25 @@ export default function Canvas({ children, overlay, disabled }: CanvasProps) {
       coordinates={coordinates}
       mousePosition={mousePos}
     >
+      <div
+        className="w-dvw h-dvw"
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerMove={handlePointerMove}
+        onWheel={handleWheel}
+        ref={ref}
+      >
         <div
-          className="w-dvw h-dvw"
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerMove={handlePointerMove}
-          ref={ref}
+          className="w-full h-full"
+          style={{
+            transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoom})`
+          }}
         >
-          <div
-            className="w-full h-full"
-            style={{
-              transform: `translate(${panPosition.x}px, ${panPosition.y}px)`
-            }}
-          >
-            {children}
-          </div>
-          {overlay}
-          <KeyboardShortcuts />
+          {children}
         </div>
+        {overlay}
+        <KeyboardShortcuts />
+      </div>
     </CanvasProvider>
   )
 }

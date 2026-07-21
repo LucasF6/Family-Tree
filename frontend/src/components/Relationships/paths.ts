@@ -8,34 +8,34 @@ export function getAveragePositionBetweenPartners(firstPartner: PersonSpatialDat
   return { x, y }
 }
 
-export function getChildToPositionPath(child: PersonSpatialData, position: Position) {
+export function getChildToPositionPath(child: PersonSpatialData, position: Position, strength: number = 50) {
   return (
     `
       M ${position.x} ${position.y}
-      C ${position.x} ${position.y + 50},
-        ${child.position.x} ${child.position.y - personHeight / 2 - 50},
+      C ${position.x} ${position.y + strength},
+        ${child.position.x} ${child.position.y - personHeight / 2 - strength},
         ${child.position.x} ${child.position.y - personHeight / 2}
     `
   )
 }
 
-export function getChildToParentPath(child: PersonSpatialData, parent: PersonSpatialData) {
+export function getChildToParentPath(child: PersonSpatialData, parent: PersonSpatialData, strength: number = 50) {
   return (
     `
       M ${child.position.x} ${child.position.y - personHeight / 2}
-      C ${child.position.x} ${child.position.y - personHeight / 2 - 50},
-        ${parent.position.x} ${parent.position.y + personHeight / 2 + 50},
+      C ${child.position.x} ${child.position.y - personHeight / 2 - strength},
+        ${parent.position.x} ${parent.position.y + personHeight / 2 + strength},
         ${parent.position.x} ${parent.position.y + personHeight / 2}
     `
   )
 }
 
-export function getPartnerToPartnerPath(firstPartner: PersonSpatialData, secondPartner: PersonSpatialData) {
+export function getPartnerToPartnerPath(firstPartner: PersonSpatialData, secondPartner: PersonSpatialData, strength: number = 50) {
   return (
     `
       M ${firstPartner.position.x + firstPartner.width / 2} ${firstPartner.position.y}
-      C ${firstPartner.position.x + firstPartner.width / 2 + 50} ${firstPartner.position.y},
-        ${secondPartner.position.x - secondPartner.width / 2 - 50} ${secondPartner.position.y},
+      C ${firstPartner.position.x + firstPartner.width / 2 + strength} ${firstPartner.position.y},
+        ${secondPartner.position.x - secondPartner.width / 2 - strength} ${secondPartner.position.y},
         ${secondPartner.position.x - secondPartner.width / 2} ${secondPartner.position.y}
     `
   )
