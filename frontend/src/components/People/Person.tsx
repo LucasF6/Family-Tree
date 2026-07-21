@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useLayoutEffect } from "react"
+import { useState, useRef, useEffect, useLayoutEffect, MouseEvent } from "react"
 import { PointerEvent } from "react"
 import styles from "./Person.module.css"
 import { PersonId, PersonMode, Position } from "@/types/family-tree.types";
@@ -72,7 +72,7 @@ export function Person({ id, name, mode, position, onWidthChange, onOpenOptions,
   }
 
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
-    if (mode === "draggable") {
+    if (mode === "draggable" && e.button === 0) {
       onStartDrag(id) // In FamilyTree this moves the element to the front
       setIsDragging(true)
       setDragPosition(position)
@@ -85,6 +85,8 @@ export function Person({ id, name, mode, position, onWidthChange, onOpenOptions,
         x: e.clientX,
         y: e.clientY
       }
+    } else if (mode === "draggable" && e.button === 2) {
+      // dispatch delete
     } else if (mode === "connectable") {
       onConnect(id)
     }
@@ -131,6 +133,10 @@ export function Person({ id, name, mode, position, onWidthChange, onOpenOptions,
     }
   }
 
+  function handleContextMenu(e: MouseEvent<HTMLDivElement>) {
+    e.preventDefault()
+  }
+
   return (
     <>
       {isDragging && (
@@ -157,6 +163,7 @@ export function Person({ id, name, mode, position, onWidthChange, onOpenOptions,
         onPointerMove={handlePointerMove}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        onContextMenu={handleContextMenu}
         ref={ref}
       >
         {name}

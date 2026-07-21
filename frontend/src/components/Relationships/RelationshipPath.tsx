@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import { getAveragePositionBetweenPartners, getChildToParentPath, getChildToPositionPath, getPartnerToPartnerPath } from "./paths";
 import { Position, RelationshipData, } from "@/types/family-tree.types";
-import { PointerEvent, useState, WheelEvent } from "react"
+import { PointerEvent, useState, WheelEvent, MouseEvent } from "react"
 
 
 type RelationshipPathProps = {
@@ -31,14 +31,17 @@ export function RelationshipPath({ data, onClick, disabled }: RelationshipPathPr
   }
 
   function handlePointerDown(e: PointerEvent<SVGGElement>) {
-    if (!disabled) {
+    if (disabled) return
+    if (e.button === 0) {
       onClick({ x: e.clientX, y: e.clientY })
       e.stopPropagation()
+    } else if (e.button === 2) {
+      // dispatch delete option
     }
   }
 
   function handleWheel(e: WheelEvent<SVGGElement>) {
-    console.log(e)
+    if (disabled) return
     setStrength(prev => {
       const next = prev - 0.05 * e.deltaY
       if ((e.deltaY > 0 && next >= 10) || (e.deltaY < 0 && next <= 100)) {
@@ -49,11 +52,20 @@ export function RelationshipPath({ data, onClick, disabled }: RelationshipPathPr
     e.stopPropagation()
   }
 
+  function handleContextMenu(e: MouseEvent<SVGGElement>) {
+    e.preventDefault()
+  }
+
   return (
     <svg
       className="absolute inset-0 overflow-visible"
     >
-      <g className="group" onPointerDown={handlePointerDown} onWheel={handleWheel}>
+      <g 
+        className="group" 
+        onPointerDown={handlePointerDown} 
+        onWheel={handleWheel} 
+        onContextMenu={handleContextMenu}
+      >
         {pathData.map((data, index) => (
           <g key={index}>
             <path

@@ -16,7 +16,7 @@ export default function KeyboardShortcuts() {
             type: "CANCELED"
           })
         }
-      } else if (e.key === "c") {
+      } else if (e.key.toLowerCase() === 'c') {
         if (["viewing", "options"].includes(editorState.mode.type)) {
           dispatch({
             type: "BEGAN_ADDING_PERSON",
@@ -24,21 +24,19 @@ export default function KeyboardShortcuts() {
           })
           console.log(coordinates.screenToWorld(mousePosition.get()))
         }
-      } 
+      } else if (e.key.toLowerCase() === 'z' && e.ctrlKey) {
+        console.log("control z")
+      } else if (e.key.toLowerCase() === 'y' && e.ctrlKey) {
+        console.log("ctrl y")
+      }
     }
 
-    function handleScroll(e: Event) {
-      console.log(e)
-    }
-    
     if (editorState.mode.type !== "disabled") {
       document.addEventListener('keydown', handleKeyDown)
-      document.addEventListener('scroll', handleScroll)
     }
     
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
-      document.removeEventListener('scroll', handleScroll)
     }
   }, [editorState.mode])
 
