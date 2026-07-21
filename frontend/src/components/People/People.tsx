@@ -1,6 +1,6 @@
 import { PersonId, PersonData, EditorState, EditorAction, Position, PersonMode, add, RelationshipId, Relationship } from "@/types/family-tree.types"
 import { Person } from "./Person"
-import { useRef } from "react"
+import { useEffect, useRef } from "react"
 import { useEditorState, useEditorStateDispatch } from "../FamilyTree"
 import Draft from "../Draft"
 
@@ -23,8 +23,11 @@ export default function People() {
 
   let modeById: Record<PersonId, PersonMode>
   switch (mode.type) {
-    case "dragging":
+    case "viewing":
       modeById = createUniformModeById("draggable", ids)
+      break
+    case "dragging":
+      modeById = createModeById(id => mode.personDragging === id ? "draggable" : "disabled", ids)
       break
     case "connecting":
       switch (mode.source.kind) {
@@ -73,6 +76,12 @@ export default function People() {
     default: 
       modeById = createUniformModeById("disabled", ids)
   }
+
+  useEffect(() => {
+    if (editorState.mode.type === "connecting") {
+      focusedPersonId.current = null
+    }
+  }, [editorState.mode.type])
 
   function handleWidthChange(id: PersonId, width: number) {
     dispatch({

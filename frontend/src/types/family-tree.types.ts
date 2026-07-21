@@ -4,8 +4,7 @@ export type PersonId = string & { readonly __brand: "PersonId" }
 export type RelationshipId = string & { readonly __brand: "RelationshipId" }
 
 export type PersonMode = "disabled" | "draggable" | "connectable"
-// Add "viewing" and distinguish it from "dragging"
-export type FamilyTreeMode = "dragging" | "disabled" | "connecting" | "naming" | "options" | "choosing-connection"
+export type FamilyTreeMode = "viewing" | "dragging" | "disabled" | "connecting" | "naming" | "options" | "choosing-connection"
 
 export type Position = {
   x: number
@@ -104,7 +103,11 @@ export type DraftMode = "connecting" | "naming" | "choosing-connection"
 
 export type EditorMode =
   | {
-      type: "dragging" | "disabled"
+      type: "disabled" | "viewing"
+    }
+  | {
+      type: "dragging"
+      personDragging: PersonId
     }
   | {
       type: "options"
@@ -122,7 +125,7 @@ export type EditorMode =
     }
   | {
       type: "choosing-connection"
-      source: Exclude<NewRelationshipSource, { kind: "none" }>
+      source: Extract<NewRelationshipSource, { kind: "person" }>
       person: PersonId
     }
 

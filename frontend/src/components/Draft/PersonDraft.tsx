@@ -3,6 +3,7 @@ import { PersonDraftLocationChooser } from "./PersonDraftLocationChooser"
 import PersonNamer from "./PersonNamer"
 import { useEffect, useRef, useState } from "react"
 import { useCoordinates } from "../Canvas/CanvasProvider"
+import RelationshipOptions from "../RelationshipOptions"
 
 type PersonDraftProps = {
   mode: Extract<EditorMode, { type: DraftMode }>
@@ -13,7 +14,7 @@ type PersonDraftProps = {
   onUpdateConnection: (connection: Connection) => void
   onUpdatePosition: (position: Position) => void
   onUpdateWidth: (width: number) => void
-  dispatch: (action: Extract<EditorAction, { type: "CHOSE_NEW_PERSON_LOCATION" | "NAMED_NEW_PERSON" }>) => void
+  dispatch: (action: Extract<EditorAction, { type: "CHOSE_NEW_PERSON_LOCATION" | "NAMED_NEW_PERSON" | "CONNECTED_EXISTING_PERSON" }>) => void
 }
 
 export function PersonDraft({ mode, graph, show, initialConnection, includeConnections, onUpdateConnection, onUpdateWidth, onUpdatePosition, dispatch }: PersonDraftProps) {
@@ -56,6 +57,11 @@ export function PersonDraft({ mode, graph, show, initialConnection, includeConne
     }
   }, [onUpdatePosition, mode])
 
+  function handleUpdateConnection(connection: Connection) {
+    setConnection(connection)
+    onUpdateConnection(connection)
+  }
+
   if (!show) {
     return
   } else if (mode.type === "connecting") {
@@ -83,11 +89,6 @@ export function PersonDraft({ mode, graph, show, initialConnection, includeConne
       }
     }
 
-    function handleUpdateConnection(connection: Connection) {
-      setConnection(connection)
-      onUpdateConnection(connection)
-    }
-
     let optionsOnRight: boolean = true
     if (mode.source.kind === "person") {
       optionsOnRight = graph.peopleById[mode.source.personId].position.x < mode.newPersonPosition.x
@@ -104,6 +105,31 @@ export function PersonDraft({ mode, graph, show, initialConnection, includeConne
       />
     )
   } else if (mode.type === "choosing-connection") {
+    const person = graph.peopleById[mode.person]
 
+    let optionsOnRight: boolean = true
+    if (mode.source.kind === "person") {
+      optionsOnRight = graph.peopleById[mode.source.personId].position.x < person.position.x
+    }
+
+    function handleSubmit(connection: Connection) {
+      dispatch({
+        type: "CONNECTED_EXISTING_PERSON",
+        connection
+      })
+    }
+
+    return (
+      <RelationshipOptions 
+        position={{
+          x: optionsOnRight ? person.position.x + person.width / 2 + 70 + 20 : person.position.x - person.width / 2 - 70 - 20,
+          y: person.position.y
+        }}
+        includeConnections={["parent", "partner", "child"]}
+        onClick={handleSubmit}
+        onHover={handleUpdateConnection}
+        animation={optionsOnRight ? "right" : "left"}
+      />
+    )
   }
 }

@@ -11,13 +11,13 @@ export default function KeyboardShortcuts() {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        if (["connecting", "naming", "options", "choosing-connection"].includes(editorState.mode.type)) {
+        if (["dragging", "connecting", "naming", "options", "choosing-connection"].includes(editorState.mode.type)) {
           dispatch({
             type: "CANCELED"
           })
         }
       } else if (e.key === "c") {
-        if (["dragging", "options"].includes(editorState.mode.type)) {
+        if (["viewing", "options"].includes(editorState.mode.type)) {
           dispatch({
             type: "BEGAN_ADDING_PERSON",
             startPosition: coordinates.screenToWorld(mousePosition.get())

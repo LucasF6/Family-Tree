@@ -42,8 +42,10 @@ export default function PersonNamer({ position, onUpdateConnection, onUpdateWidt
     <>
       {includeConnections && (
         <RelationshipOptions 
-          positionX={right ? position.x + width / 2 + 70 + 20 : position.x - width / 2 - 70 - 20}
-          positionY={position.y}
+          position={{
+            x: right ? position.x + width / 2 + 70 + 20 : position.x - width / 2 - 70 - 20,
+            y: position.y
+          }}
           includeConnections={includeConnections}
           onClick={() => onSubmit(name)}
           onHover={handleHover}

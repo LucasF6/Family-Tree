@@ -1,4 +1,4 @@
-import { Connection, DraftMode, EditorAction, EditorMode, FamilyGraph, NewRelationshipSourceWithConnection, PersonSpatialData, Position } from "@/types/family-tree.types"
+import { Connection, DraftMode, EditorAction, EditorMode, FamilyGraph, NewRelationshipSource, NewRelationshipSourceWithConnection, PersonSpatialData, Position } from "@/types/family-tree.types"
 import { PersonDraft } from "./PersonDraft"
 import { useState } from "react"
 import { RelationshipDraft } from "./RelationshipDraft"
@@ -26,13 +26,23 @@ export default function Draft({ graph, mode, dispatch }: DraftProps) {
     }
   }
 
-  let source: NewRelationshipSourceWithConnection
-  if (mode.source.kind !== "person") {
-    source = mode.source
-  } else {
-    source = {
-      ...mode.source,
+  const source: NewRelationshipSource = mode.source
+  let sourceWithConnection: NewRelationshipSourceWithConnection
+  if (source.kind !== "person") {
+    sourceWithConnection = source
+  } else if (mode.type !== "connecting" || mode.focusedPerson === null) {
+    sourceWithConnection = {
+      ...source,
       connection
+    }
+  } else {
+    const relationship = graph.relationshipIds.find(relId => {
+      const rel = graph.relationshipsById[relId]
+      return rel.parents.length === 2 && ((rel.parents[0] === source.personId && rel.parents[1] === mode.focusedPerson) || (rel.parents[1] === source.personId && rel.parents[0] === mode.focusedPerson))
+    })
+    sourceWithConnection = {
+      ...source,
+      connection: relationship ? "child" : "partner"
     }
   }
 
@@ -57,10 +67,10 @@ export default function Draft({ graph, mode, dispatch }: DraftProps) {
 
   return (
     <>
-      {source.kind !== "none" && (
+      {sourceWithConnection.kind !== "none" && (
         <RelationshipDraft 
           newPersonData={newPersonData}
-          source={source}
+          source={sourceWithConnection}
           peopleById={graph.peopleById}
           relationshipsById={graph.relationshipsById}
         />

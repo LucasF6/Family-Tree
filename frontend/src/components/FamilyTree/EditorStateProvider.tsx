@@ -29,7 +29,7 @@ const defaultState: EditorState = {
     relationshipsById: {},
     relationshipIds: []
   },
-  mode: { type: "dragging" }
+  mode: { type: "viewing" }
 }
 
 export function EditorStateProvider({ children }: { children: React.ReactNode }) {

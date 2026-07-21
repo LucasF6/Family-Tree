@@ -23,7 +23,7 @@ export function Relationships() {
   const coordinates = useCoordinates()
 
   const { peopleById, relationshipIds, relationshipsById } = editorState.graph
-  const disabled = editorState.mode.type !== "dragging"
+  const disabled = editorState.mode.type !== "viewing"
 
   const relationshipData: RelationshipData[] = relationshipIds.map(relId => ({
     id: relId,

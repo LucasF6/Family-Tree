@@ -25,6 +25,7 @@ function createRelationship(draft: EditorState, connection: Connection, relation
       }
       break
   }
+  draft.graph.relationshipIds.push(relationshipId)
 }
 
 export default function familyTreeReducer(draft: EditorState, action: EditorAction): EditorState | undefined {
@@ -37,7 +38,7 @@ export default function familyTreeReducer(draft: EditorState, action: EditorActi
       break
     }
     case "CANCELED": {
-      draft.mode.type = "dragging"
+      draft.mode.type = "viewing"
       break
     }
     case "BEGAN_DRAGGING_PERSON": {
@@ -47,10 +48,18 @@ export default function familyTreeReducer(draft: EditorState, action: EditorActi
         ...draft.graph.peopleIds.slice(index + 1),
         action.person
       ]
+      draft.mode = {
+        type: "dragging",
+        personDragging: action.person
+      }
       break
     }
     case "FINISHED_DRAGGING_PERSON": {
-      draft.graph.peopleById[action.person].position = action.newPosition
+      if (draft.mode.type !== "dragging") {
+        return
+      }
+      draft.graph.peopleById[draft.mode.personDragging].position = action.newPosition
+      draft.mode = { type: "viewing" }
       break
     }
     case "CHANGED_PERSON_WIDTH": {
@@ -119,8 +128,8 @@ export default function familyTreeReducer(draft: EditorState, action: EditorActi
       if (source.kind === "person" && action.fromPerson) {
         const id: RelationshipId = v4() as RelationshipId
         const relationshipIdWithParents: undefined | RelationshipId = draft.graph.relationshipIds.find(relId => draft.graph.relationshipsById[relId].children.find(id => source.personId === id))
-        draft.graph.relationshipIds.push(id)
         if (relationshipIdWithParents && action.connection === "parent" && draft.graph.relationshipsById[relationshipIdWithParents].parents.length === 1) {
+          draft.graph.relationshipIds.push(id)
           draft.graph.relationshipsById[id] = {
             id,
             parents: [newPerson.id, draft.graph.relationshipsById[relationshipIdWithParents].parents[0]],
@@ -137,17 +146,57 @@ export default function familyTreeReducer(draft: EditorState, action: EditorActi
           source.relationshipId
         ].children.push(newPerson.id)
       }
-      draft.mode = { type: "dragging" }
+      draft.mode = { type: "viewing" }
       break
     }
     case "BEGAN_CONNECTING_EXISTING_PERSON": {
-      if (draft.mode.type !== "connecting" || draft.mode.source.kind === "none") {
+      if (draft.mode.type !== "connecting") {
         return
       }
-      draft.mode = {
-        type: "choosing-connection",
-        source: draft.mode.source,
-        person: action.person
+      const source = draft.mode.source
+      if (source.kind === "none") {
+        return
+      }
+      if (source.kind === "relationship") {
+        draft.graph.relationshipsById[source.relationshipId].children.push(action.person)
+        draft.mode = { type: "viewing" }
+      } else {
+        let isParent: boolean = false
+        let isPartner: boolean = false
+        let isChild: boolean = false
+        let hasTwoParents: boolean = false
+        draft.graph.relationshipIds.forEach(id => {
+          const { parents, children } = draft.graph.relationshipsById[id]
+          if (parents.includes(source.personId) && parents.includes(action.person)) {
+            isPartner = true
+          }
+          if (parents.includes(source.personId) && children.includes(action.person)) {
+            isChild = true
+          }
+          if (children.includes(source.personId) && parents.includes(action.person)) {
+            isParent = true
+          }
+          if (children.includes(source.personId) && parents.length === 2) {
+            hasTwoParents = true
+          }
+        })
+        if (isParent || isChild) {
+          // forces action.person to be the partner of source.personId
+          const id: RelationshipId = v4() as RelationshipId
+          createRelationship(draft, "partner", id, source.personId, action.person)
+          draft.mode = { type: "viewing" }
+        } else if (isPartner && hasTwoParents) {
+          // forces action.person to be the child of source.personId and an unspecified person
+          const id: RelationshipId = v4() as RelationshipId
+          createRelationship(draft, "child", id, source.personId, action.person)
+          draft.mode = { type: "viewing" }
+        } else {
+          draft.mode = {
+            type: "choosing-connection",
+            source,
+            person: action.person
+          }
+        }
       }
       break
     }
@@ -155,17 +204,9 @@ export default function familyTreeReducer(draft: EditorState, action: EditorActi
       if (draft.mode.type !== "choosing-connection") {
         return
       }
-      if (draft.mode.source.kind === "person") {
-        createRelationship(draft, action.connection, v4() as RelationshipId, draft.mode.source.personId, draft.mode.person)
-      } else {
-        if (action.connection !== "child") {
-          throw new Error("connection must be child when relationship is source")
-        }
-        draft.graph.relationshipsById[
-          draft.mode.source.relationshipId
-        ].children.push(draft.mode.person)
-      }
-      draft.mode = { type: "dragging" }
+      const id: RelationshipId = v4() as RelationshipId
+      createRelationship(draft, action.connection, id, draft.mode.source.personId, draft.mode.person)
+      draft.mode = { type: "viewing" }
       break
     }
     case "UPDATED_FOCUSED_PERSON":

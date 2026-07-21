@@ -4,7 +4,8 @@ import { AddPersonButton } from "./AddPersonButton";
 import { FamilyTreeMode } from "@/types/family-tree.types"
 
 const helpTextByMode: Record<string, string> = {
-  dragging: "Hit c to create",
+  viewing: "Hit c to create",
+  dragging: "Hit esc to go back",
   connecting: "Hit esc to go back",
   naming: "Hit esc to go back\nHit enter to submit",
   options: "Hit esc to go back\nHit c to create",

@@ -2,11 +2,10 @@
 
 import { clsx } from "clsx";
 import styles from "./RelationshipOptions.module.css"
-import { Connection } from "@/types/family-tree.types";
+import { Connection, Position } from "@/types/family-tree.types";
 
 type RelationshipOptionsProps = {
-  positionX: number;
-  positionY: number;
+  position: Position
   includeConnections: [Connection] | [Connection, Connection] | [Connection, Connection, Connection]; // Must be nonempty
   onClick: (connection: Connection) => void;
   onHover: (connection: Connection) => void;
@@ -30,7 +29,7 @@ function connectionColor(connection: Connection) {
   }
 }
 
-export default function RelationshipOptions({ positionX, positionY, includeConnections, onClick, onHover, animation = "none" }: RelationshipOptionsProps) {
+export default function RelationshipOptions({ position, includeConnections, onClick, onHover, animation = "none" }: RelationshipOptionsProps) {
   return (
     <div
       className={clsx(
@@ -42,8 +41,8 @@ export default function RelationshipOptions({ positionX, positionY, includeConne
         }
       )}
       style={{
-        "--x": `${positionX}px`,
-        "--y": `${positionY}px`
+        "--x": `${position.x}px`,
+        "--y": `${position.y}px`
       } as React.CSSProperties}
       onPointerDown={e => e.stopPropagation()}
     >

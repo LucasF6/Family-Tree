@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useLayoutEffect } from "react"
 import { PointerEvent } from "react"
 import styles from "./Person.module.css"
 import { PersonId, PersonMode, Position } from "@/types/family-tree.types";
+import { useEditorState } from "../FamilyTree";
 
 const DRAG_THRESHOLD = 3; // 3px
 
@@ -35,8 +36,10 @@ function withinDragThreshold(positionX: number, positionY: number, clientX: numb
 }
 
 export function Person({ id, name, mode, position, onWidthChange, onOpenOptions, onStartDrag, onEndDrag, onMouseEnter, onMouseLeave, onConnect }: PersonProps) {
+  const { mode: editorMode } = useEditorState()
   const [dragPosition, setDragPosition] = useState<Position>(position)
   const [isDragging, setIsDragging] = useState(false)
+  const [width, setWidth] = useState(80)
   const dragOffset = useRef({x: 0, y: 0})
   const dragStartPoint = useRef({x: 200, y: 200})
   const ref = useRef<HTMLDivElement>(null)
@@ -48,7 +51,14 @@ export function Person({ id, name, mode, position, onWidthChange, onOpenOptions,
   useLayoutEffect(() => {
     if (!ref.current) return
     onWidthChange(id, ref.current.getBoundingClientRect().width)
+    setWidth(ref.current.getBoundingClientRect().width)
   }, [])
+
+  useEffect(() => {
+    if (editorMode.type === "viewing") {
+      setIsDragging(false)
+    }
+  }, [editorMode.type])
 
   let colors;
   if (mode === "connectable") {
@@ -68,8 +78,8 @@ export function Person({ id, name, mode, position, onWidthChange, onOpenOptions,
       setDragPosition(position)
       e.currentTarget.setPointerCapture(e.pointerId)
       dragOffset.current = {
-        x: dragPosition.x - e.clientX,
-        y: dragPosition.y - e.clientY
+        x: position.x - e.clientX,
+        y: position.y - e.clientY
       }
       dragStartPoint.current = {
         x: e.clientX,
@@ -123,6 +133,18 @@ export function Person({ id, name, mode, position, onWidthChange, onOpenOptions,
 
   return (
     <>
+      {isDragging && (
+        <div 
+          className={`
+            ${styles.person}
+            ${'bg-gray-800'}
+          `}
+          style={{
+            transform: `translate(${position.x}px, ${position.y}px) translate(-50%, -50%)`,
+            width
+          }}
+        />
+      )}
       <div 
         className={`
           ${styles.person}
