@@ -1,42 +1,51 @@
 import { Dimensions, Position } from "@/types/family-tree.types";
 import { PointerEvent, useRef, useEffect, useState } from "react";
-import { CoordinatesContext, CoordinatesContextValue, ViewportContext } from "./context";
+import { CanvasProvider, CoordinatesContext, CoordinatesContextValue, MousePositionContextValue, ViewportContext } from "./CanvasProvider";
+import KeyboardShortcuts from "../KeyboardShortcuts";
 
 type CanvasProps = { 
   children: React.ReactNode
   overlay: React.ReactNode
   disabled: boolean
-  onUpdateMousePosition: (position: Position) => void
-  onUpdatePanPosition: (position: Position) => void
 }
 
-export default function Canvas({ children, overlay, disabled, onUpdateMousePosition, onUpdatePanPosition }: CanvasProps) {
+export default function Canvas({ children, overlay, disabled }: CanvasProps) {
   const isDragging = useRef(false)
   const dragOffset = useRef<Position>({ x: 0, y: 0 })
+  const panRef = useRef<Position>({ x: 0, y: 0 })
   const [panPosition, setPanPosition] = useState<Position>({ x: 0, y: 0 })
   const ref = useRef<HTMLDivElement>(null)
-  const [screenDimensions, setScreenDimensions] = useState<Dimensions | null>(null)
+  const [viewport, setViewport] = useState<Dimensions | null>(null)
+  const mousePosition = useRef<Position>({ x: 0, y: 0 })
 
   const coordinates: CoordinatesContextValue = {
     screenToWorld(screenPosition: Position): Position {
       return {
-        x: screenPosition.x - panPosition.x,
-        y: screenPosition.y - panPosition.y
+        x: screenPosition.x - panRef.current.x,
+        y: screenPosition.y - panRef.current.y
       }
     },
     worldToScreen(worldPosition: Position): Position {
       return {
-        x: worldPosition.x + panPosition.x,
-        y: worldPosition.y + panPosition.y
+        x: worldPosition.x + panRef.current.x,
+        y: worldPosition.y + panRef.current.y
       }
     }
   }
+
+  const mousePos: MousePositionContextValue = {
+    get: () => mousePosition.current
+  }
+
+  useEffect(() => {
+    panRef.current = panPosition
+  }, [panPosition])
   
   useEffect(() => {
     if (!ref.current) return
 
     const observer = new ResizeObserver(([entry]) => {
-      setScreenDimensions({
+      setViewport({
         width: entry.contentRect.width,
         height: entry.contentRect.height
       })
@@ -72,17 +81,19 @@ export default function Canvas({ children, overlay, disabled, onUpdateMousePosit
         y: e.clientY + dragOffset.current.y
       }
       setPanPosition(position)
-      onUpdatePanPosition(position)
     }
-    onUpdateMousePosition({
+    mousePosition.current = {
       x: e.clientX,
       y: e.clientY
-    })
+    }
   }
   
   return (
-    <ViewportContext value={screenDimensions}>
-      <CoordinatesContext value={coordinates}>
+    <CanvasProvider
+      viewport={viewport ?? { width: 0, height: 0 }}
+      coordinates={coordinates}
+      mousePosition={mousePos}
+    >
         <div
           className="w-dvw h-dvw"
           onPointerDown={handlePointerDown}
@@ -99,8 +110,8 @@ export default function Canvas({ children, overlay, disabled, onUpdateMousePosit
             {children}
           </div>
           {overlay}
+          <KeyboardShortcuts />
         </div>
-      </CoordinatesContext>
-    </ViewportContext>
+    </CanvasProvider>
   )
 }

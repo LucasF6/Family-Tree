@@ -123,7 +123,7 @@ export type EditorMode =
   | {
       type: "choosing-connection"
       source: Exclude<NewRelationshipSource, { kind: "none" }>
-      newPerson: PersonId
+      person: PersonId
     }
 
 export type EditorAction =
@@ -178,8 +178,11 @@ export type EditorAction =
       connection: Connection
     }
   | {
-      type: "CONNECTED_NEW_PERSON"
+      type: "BEGAN_CONNECTING_EXISTING_PERSON"
       person: PersonId
+    }
+  | {
+      type: "CONNECTED_EXISTING_PERSON"
       connection: Connection
     }
   | {

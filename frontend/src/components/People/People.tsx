@@ -1,28 +1,78 @@
-import { PersonId, PersonData, EditorState, EditorAction, Position, PersonMode, add } from "@/types/family-tree.types"
+import { PersonId, PersonData, EditorState, EditorAction, Position, PersonMode, add, RelationshipId, Relationship } from "@/types/family-tree.types"
 import { Person } from "./Person"
 import { useRef } from "react"
+import { useEditorState, useEditorStateDispatch } from "../FamilyTree"
+import Draft from "../Draft"
 
-type PeopleProps = {
-  editorState: EditorState,
-  dispatch: (action: EditorAction) => void
+function createModeById(mode: (id: PersonId) => PersonMode, ids: PersonId[]): Record<PersonId, PersonMode> {
+  return Object.fromEntries(ids.map(id => [id, mode(id)]))
 }
 
-export default function People({ editorState, dispatch }: PeopleProps) {
+function createUniformModeById(mode: PersonMode, ids: PersonId[]): Record<PersonId, PersonMode> {
+  return createModeById(() => mode, ids)
+}
+
+
+export default function People() {
+  const editorState = useEditorState()
+  const dispatch = useEditorStateDispatch()
   const focusedPersonId = useRef<PersonId | null>(null)
 
-  const { peopleIds: ids, peopleById: dataById } = editorState.graph
+  const { peopleIds: ids, peopleById: dataById, relationshipIds, relationshipsById } = editorState.graph
+  const mode = editorState.mode
 
-  const modeById: Record<PersonId, PersonMode> = Object.fromEntries(ids.map(id => {
-    switch (editorState.mode.type) {
-      case "dragging":
-        return [id, "draggable"]
-      case "connecting":
-        // This will need some updating
-        return [id, "connectable"]
-      default:
-        return [id, "disabled"]
-    }
-  }))
+  let modeById: Record<PersonId, PersonMode>
+  switch (mode.type) {
+    case "dragging":
+      modeById = createUniformModeById("draggable", ids)
+      break
+    case "connecting":
+      switch (mode.source.kind) {
+        case "none":
+          modeById = createUniformModeById("disabled", ids)
+          break
+        case "relationship":
+          const relationship: Relationship = relationshipsById[mode.source.relationshipId]
+          modeById = createModeById(id => (relationship.parents.includes(id) || relationship.children.includes(id)) ? "disabled" : "connectable", ids)
+          break
+        case "person":
+          const fromId = mode.source.personId
+          const people: Record<PersonId, { isPartner: boolean, isParent: boolean, isChild: boolean }> =
+            Object.fromEntries(ids.map(id => [id, { isPartner: false, isParent: false, isChild: false }]))
+          let hasTwoParents: boolean = false
+          relationshipIds.forEach(id => {
+            const relationship: Relationship = relationshipsById[id]
+            if (relationship.parents.includes(fromId)) {
+              relationship.children.forEach(id => people[id].isChild = true)
+              if (relationship.parents.length === 2) {
+                const partnerId = relationship.parents[0] === fromId ? relationship.parents[1] : relationship.parents[0]
+                people[partnerId].isPartner = true 
+              }
+            }
+            if (relationship.children.includes(fromId)) {
+              relationship.parents.forEach(id => people[id].isParent = true)
+              if (relationship.parents.length === 2) {
+                hasTwoParents = true
+              }
+            }
+          })
+          modeById = createModeById(id => {
+            if (id === fromId) {
+              return "disabled"
+            }
+            const person = people[id]
+            if (hasTwoParents) {
+              return person.isPartner && person.isChild ? "disabled" : "connectable"
+            } else {
+              return person.isPartner && (person.isChild || person.isParent) ? "disabled" : "connectable"
+            }
+          }, ids)
+          break
+      }
+      break
+    default: 
+      modeById = createUniformModeById("disabled", ids)
+  }
 
   function handleWidthChange(id: PersonId, width: number) {
     dispatch({
@@ -76,11 +126,17 @@ export default function People({ editorState, dispatch }: PeopleProps) {
   }
 
   function handleConnect(id: PersonId) {
-
+    dispatch({
+      type: "BEGAN_CONNECTING_EXISTING_PERSON",
+      person: id
+    })
   }
 
   return (
     <>
+      {(mode.type === "connecting" || mode.type === "choosing-connection" || mode.type === "naming") && (
+        <Draft mode={mode} graph={editorState.graph} dispatch={dispatch} />
+      )}
       {ids.map(id => {
         const person = dataById[id]
         return (

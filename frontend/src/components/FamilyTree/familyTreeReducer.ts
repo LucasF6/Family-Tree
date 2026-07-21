@@ -140,16 +140,30 @@ export default function familyTreeReducer(draft: EditorState, action: EditorActi
       draft.mode = { type: "dragging" }
       break
     }
-    case "CONNECTED_NEW_PERSON": {
+    case "BEGAN_CONNECTING_EXISTING_PERSON": {
+      if (draft.mode.type !== "connecting" || draft.mode.source.kind === "none") {
+        return
+      }
+      draft.mode = {
+        type: "choosing-connection",
+        source: draft.mode.source,
+        person: action.person
+      }
+      break
+    }
+    case "CONNECTED_EXISTING_PERSON": {
       if (draft.mode.type !== "choosing-connection") {
         return
       }
       if (draft.mode.source.kind === "person") {
-        createRelationship(draft, action.connection, v4() as RelationshipId, draft.mode.source.personId, action.person)
+        createRelationship(draft, action.connection, v4() as RelationshipId, draft.mode.source.personId, draft.mode.person)
       } else {
+        if (action.connection !== "child") {
+          throw new Error("connection must be child when relationship is source")
+        }
         draft.graph.relationshipsById[
           draft.mode.source.relationshipId
-        ].children.push(action.person)
+        ].children.push(draft.mode.person)
       }
       draft.mode = { type: "dragging" }
       break

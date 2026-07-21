@@ -8,7 +8,8 @@ import {
   RelationshipId,
 } from "@/types/family-tree.types"
 import { RelationshipPath } from "."
-import { useCoordinates } from "@/components/Canvas/context"
+import { useCoordinates } from "@/components/Canvas/CanvasProvider"
+import { useEditorState, useEditorStateDispatch } from "../FamilyTree/EditorStateProvider"
 
 type RelationshipsProps = {
   graph: FamilyGraph
@@ -16,11 +17,13 @@ type RelationshipsProps = {
   dispatch: (action: Extract<EditorAction, { type: "BEGAN_ADDING_PERSON_FROM_RELATIONSHIP" }>) => void
 }
 
-export function Relationships({
-  graph: { peopleById, relationshipsById, relationshipIds },
-  disabled, dispatch
-}: RelationshipsProps) {
+export function Relationships() {
+  const editorState = useEditorState()
+  const dispatch = useEditorStateDispatch()
   const coordinates = useCoordinates()
+
+  const { peopleById, relationshipIds, relationshipsById } = editorState.graph
+  const disabled = editorState.mode.type !== "dragging"
 
   const relationshipData: RelationshipData[] = relationshipIds.map(relId => ({
     id: relId,

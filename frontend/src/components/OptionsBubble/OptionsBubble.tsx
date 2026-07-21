@@ -1,14 +1,28 @@
 import { PersonData, PersonId, Position } from "@/types/family-tree.types";
 import styles from "./OptionsBubble.module.css"
+import { useEditorState, useEditorStateDispatch } from "../FamilyTree";
+import { useCoordinates, useMousePosition } from "../Canvas/CanvasProvider";
 
-type OptionsBubbleProps = {
-  person: PersonData
-  onConnect: (id: PersonId) => void;
-  onEdit: (id: PersonId) => void;
-  onPage: (id: PersonId) => void;
-};
+export default function OptionsBubble() {
+  const editorState = useEditorState()
+  const dispatch = useEditorStateDispatch()
+  const mousePosition = useMousePosition()
+  const coordinates = useCoordinates()
 
-export default function OptionsBubble({ person, onConnect, onEdit, onPage }: OptionsBubbleProps) {
+  if (editorState.mode.type !== "options") {
+    return
+  }
+
+  const person = editorState.graph.peopleById[editorState.mode.personWithOptions]
+  
+  function handleClickConnect(personId : PersonId) {
+    dispatch({
+      type: "BEGAN_ADDING_PERSON_FROM_PERSON",
+      personId,
+      startPosition: coordinates.screenToWorld(mousePosition.get())
+    })
+  }
+
   return (
     <div 
       className={styles['options-bubble']}
@@ -21,20 +35,20 @@ export default function OptionsBubble({ person, onConnect, onEdit, onPage }: Opt
       <div className="grid grid-cols-2">
         <button 
           className="bg-amber-400 hover:cursor-pointer hover:bg-amber-500 text-4xl font-mono"
-          onClick={() => onEdit(person.id)}
+          onClick={() => {}}
         >
           Edit
         </button>
         <button 
           className="bg-blue-400 hover:cursor-pointer hover:bg-blue-500 text-4xl font-mono"
-          onClick={() => onPage(person.id)}
+          onClick={() => {}}
         >
           Page
         </button>
       </div>
       <button 
         className="bg-green-400 hover:cursor-pointer hover:bg-green-500 text-4xl font-mono"
-        onClick={() => onConnect(person.id)}
+        onClick={() => handleClickConnect(person.id)}
       >
         Connect
       </button>

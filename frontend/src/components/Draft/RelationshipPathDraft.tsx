@@ -29,7 +29,8 @@ export function RelationshipPathDraft({ relationshipDraftData }: RelationshipPat
     }
     case "couple-child": {
       const { newPerson, firstPartner, secondPartner } = relationshipDraftData
-      pathData = getChildToCouplePath(newPerson, firstPartner, secondPartner)
+      const swapPartners = firstPartner.position.x > secondPartner.position.x
+      pathData = getChildToCouplePath(newPerson, swapPartners ? secondPartner : firstPartner, swapPartners ? firstPartner : secondPartner)
       break
     }
   }

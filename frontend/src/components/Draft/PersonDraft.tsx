@@ -1,10 +1,13 @@
-import { Dimensions, EditorMode, Position, DraftMode, Connection, EditorAction, PersonData, PersonId, Relationship, RelationshipId, PersonSpatialData } from "@/types/family-tree.types"
+import { Dimensions, EditorMode, Position, DraftMode, Connection, EditorAction, PersonData, PersonId, Relationship, RelationshipId, PersonSpatialData, FamilyGraph } from "@/types/family-tree.types"
 import { PersonDraftLocationChooser } from "./PersonDraftLocationChooser"
 import PersonNamer from "./PersonNamer"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useCoordinates } from "../Canvas/CanvasProvider"
 
 type PersonDraftProps = {
   mode: Extract<EditorMode, { type: DraftMode }>
+  graph: FamilyGraph
+  show: boolean
   includeConnections?: [Connection, Connection] | [Connection, Connection, Connection]
   initialConnection?: Connection
   onUpdateConnection: (connection: Connection) => void
@@ -13,23 +16,53 @@ type PersonDraftProps = {
   dispatch: (action: Extract<EditorAction, { type: "CHOSE_NEW_PERSON_LOCATION" | "NAMED_NEW_PERSON" }>) => void
 }
 
-export function PersonDraft({ mode, initialConnection, includeConnections, onUpdateConnection, onUpdateWidth, onUpdatePosition, dispatch }: PersonDraftProps) {
+export function PersonDraft({ mode, graph, show, initialConnection, includeConnections, onUpdateConnection, onUpdateWidth, onUpdatePosition, dispatch }: PersonDraftProps) {
   const [connection, setConnection] = useState<Connection>(initialConnection ?? "partner")
-  
-  if (mode.type === "connecting") {
-    function handleChooseLocation(position: Position) {
+  const [position, setPosition]= useState<Position>(mode.type === "connecting" ? mode.newPersonPosition : { x: 0, y: 0 })
+  const positionRef = useRef<Position>(position)
+
+  const coordinates = useCoordinates()
+
+  useEffect(() => {
+    positionRef.current = position
+  }, [position])
+
+  useEffect(() => {
+    function handlePointerDown() {
       dispatch({
         type: "CHOSE_NEW_PERSON_LOCATION",
-        position
+        position: positionRef.current
       })
     }
 
+    function handlePointerMove(e: PointerEvent) {
+      const newPosition = coordinates.screenToWorld({
+        x: e.clientX,
+        y: e.clientY
+      })
+
+      setPosition(newPosition)
+      onUpdatePosition(newPosition)
+    }
+
+    if (mode.type === "connecting") {
+      window.addEventListener("pointerdown", handlePointerDown)
+      window.addEventListener("pointermove", handlePointerMove)
+    }
+
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown)
+      window.removeEventListener("pointermove", handlePointerMove)
+    }
+  }, [onUpdatePosition, mode])
+
+  if (!show) {
+    return
+  } else if (mode.type === "connecting") {
     return (
       <PersonDraftLocationChooser 
-        initialPosition={mode.newPersonPosition}
+        position={position}
         hasShadow={mode.source.kind === "none"}
-        onChooseLocation={handleChooseLocation}
-        onUpdatePosition={onUpdatePosition}
       />
     )
   } else if (mode.type === "naming") {
@@ -55,6 +88,11 @@ export function PersonDraft({ mode, initialConnection, includeConnections, onUpd
       onUpdateConnection(connection)
     }
 
+    let optionsOnRight: boolean = true
+    if (mode.source.kind === "person") {
+      optionsOnRight = graph.peopleById[mode.source.personId].position.x < mode.newPersonPosition.x
+    }
+
     return (
       <PersonNamer 
         position={mode.newPersonPosition}
@@ -62,6 +100,7 @@ export function PersonDraft({ mode, initialConnection, includeConnections, onUpd
         onUpdateConnection={handleUpdateConnection}
         onUpdateWidth={onUpdateWidth}
         onSubmit={handleSubmit}
+        right={optionsOnRight}
       />
     )
   } else if (mode.type === "choosing-connection") {

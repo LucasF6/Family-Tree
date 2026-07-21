@@ -18,7 +18,7 @@ export function RelationshipPath({ data, onClick, disabled }: RelationshipPathPr
   if (parents.length === 2) {
     const swapPartners: boolean = parents[0].position.x > parents[1].position.x
     pathData.push(getPartnerToPartnerPath(swapPartners ? parents[1] : parents[0], swapPartners ? parents[0] : parents[1]))
-    const coupleAveragePosition: Position = getAveragePositionBetweenPartners(parents[0], parents[1])
+    const coupleAveragePosition: Position = getAveragePositionBetweenPartners(swapPartners ? parents[1] : parents[0], swapPartners ? parents[0] : parents[1])
     children.forEach(child => {
       pathData.push(getChildToPositionPath(child, coupleAveragePosition))
     })

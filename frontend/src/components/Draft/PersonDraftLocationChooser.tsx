@@ -4,19 +4,14 @@ import styles from "./PersonDraftLocationChooser.module.css"
 import clsx from "clsx";
 import { useEffect, useState, useRef, useContext } from "react"
 import { Position } from "@/types/family-tree.types";
-import { useCoordinates, CoordinatesContext, useViewport } from "@/components/Canvas/context";
+import { useCoordinates, useViewport } from "@/components/Canvas/CanvasProvider";
 
 type PersonDraftLocationChooserProps = {
-  initialPosition: Position
+  position: Position
   hasShadow: boolean
-  onChooseLocation: (position: Position) => void
-  onUpdatePosition: (position: Position) => void
 }
 
-export function PersonDraftLocationChooser({ initialPosition, hasShadow, onChooseLocation, onUpdatePosition }: PersonDraftLocationChooserProps) {
-  const [position, setPosition] = useState<Position>(initialPosition)
-  const positionRef = useRef(position)
-
+export function PersonDraftLocationChooser({ position, hasShadow }: PersonDraftLocationChooserProps) {
   const coordinates = useCoordinates()
   const viewport = useViewport()
 
@@ -24,35 +19,6 @@ export function PersonDraftLocationChooser({ initialPosition, hasShadow, onChoos
     x: viewport.width / 2,
     y: viewport.height / 2
   })
-
-  useEffect(() => {
-    positionRef.current = position
-  }, [position])
-
-  useEffect(() => {
-    function handlePointerDown() {
-      onChooseLocation(positionRef.current)
-    }
-
-    function handlePointerMove(e: PointerEvent) {
-      const myPosition = {
-        x: e.clientX,
-        y: e.clientY
-      }
-      const newPosition = coordinates.screenToWorld(myPosition)
-
-      setPosition(newPosition)
-      onUpdatePosition(newPosition)
-    }
-
-    window.addEventListener("pointerdown", handlePointerDown)
-    window.addEventListener("pointermove", handlePointerMove)
-
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown)
-      window.removeEventListener("pointermove", handlePointerMove)
-    }
-  }, [onChooseLocation])
 
   return (
     <>
@@ -72,7 +38,7 @@ export function PersonDraftLocationChooser({ initialPosition, hasShadow, onChoos
         className={clsx(
           styles.locationChooser,
           "bg-[rgb(129,255,129)]",
-          hasShadow ? styles.playFromCenterAnimation : styles.playGrowAnimation
+          hasShadow && styles.playFromCenterAnimation
         )}
         style={{
           "--x": `${position.x}px`,

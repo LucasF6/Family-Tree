@@ -76,7 +76,7 @@ export function Person({ id, name, mode, position, onWidthChange, onOpenOptions,
         y: e.clientY
       }
     } else if (mode === "connectable") {
-
+      onConnect(id)
     }
     e.stopPropagation()
   }

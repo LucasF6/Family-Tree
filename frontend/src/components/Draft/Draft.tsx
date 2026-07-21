@@ -16,7 +16,7 @@ export default function Draft({ graph, mode, dispatch }: DraftProps) {
 
   let newPersonData: PersonSpatialData
   if (mode.type === "choosing-connection") {
-    newPersonData = graph.peopleById[mode.newPerson]
+    newPersonData = graph.peopleById[mode.person]
   } else if (mode.type === "connecting" && mode.focusedPerson !== null) {
     newPersonData = graph.peopleById[mode.focusedPerson]
   } else {
@@ -65,8 +65,10 @@ export default function Draft({ graph, mode, dispatch }: DraftProps) {
           relationshipsById={graph.relationshipsById}
         />
       )}
-      {showPersonDraft && <PersonDraft 
+      {<PersonDraft 
         mode={mode}
+        show={showPersonDraft}
+        graph={graph}
         initialConnection={initialConnection}
         includeConnections={includeConnections}
         onUpdateConnection={connection => setConnection(connection)}
