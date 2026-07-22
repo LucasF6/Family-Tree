@@ -22,12 +22,15 @@ export default function KeyboardShortcuts() {
             type: "BEGAN_ADDING_PERSON",
             startPosition: coordinates.screenToWorld(mousePosition.get())
           })
-          console.log(coordinates.screenToWorld(mousePosition.get()))
         }
       } else if (e.key.toLowerCase() === 'z' && e.ctrlKey) {
-        console.log("control z")
+        dispatch({
+          type: "UNDO"
+        })
       } else if (e.key.toLowerCase() === 'y' && e.ctrlKey) {
-        console.log("ctrl y")
+        dispatch({
+          type: "REDO"
+        })
       }
     }
 

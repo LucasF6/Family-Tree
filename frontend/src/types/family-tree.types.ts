@@ -74,7 +74,7 @@ export type RelationshipDraftData =
 export type Relationship = { id: RelationshipId } & (
   | {
       parents: [PersonId]
-      children: [PersonId, ...PersonId[]]
+      children: [PersonId] // , ...PersonId[]]
     }
   | {
       parents: [PersonId, PersonId]
@@ -173,12 +173,14 @@ export type EditorAction =
       type: "NAMED_NEW_PERSON"
       fromPerson: false
       name: string
+      width: number
     }
   | {
       type: "NAMED_NEW_PERSON"
       fromPerson: true
       name: string
       connection: Connection
+      width: number
     }
   | {
       type: "BEGAN_CONNECTING_EXISTING_PERSON"
@@ -192,4 +194,19 @@ export type EditorAction =
       type: "UPDATED_FOCUSED_PERSON"
       person: PersonId | null
     }
+  | {
+      type: "UNDO"
+    }
+  | {
+      type: "REDO"
+    }
+  | {
+      type: "DEBUG"
+    }
+
+export type EditorHistory = {
+  history: FamilyGraph[]
+  present: number
+  mode: EditorMode
+}
     

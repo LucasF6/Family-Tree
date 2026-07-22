@@ -31,7 +31,7 @@ export default function PersonNamer({ position, onUpdateConnection, onUpdateWidt
     if (!ref.current) return
     const w = ref.current.getBoundingClientRect().width
     setWidth(w)
-    onUpdateWidth?.(w)
+    onUpdateWidth(w)
   }
 
   function handleHover(connection: Connection) {

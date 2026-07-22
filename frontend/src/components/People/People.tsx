@@ -35,8 +35,16 @@ export default function People() {
           modeById = createUniformModeById("disabled", ids)
           break
         case "relationship":
-          const relationship: Relationship = relationshipsById[mode.source.relationshipId]
-          modeById = createModeById(id => (relationship.parents.includes(id) || relationship.children.includes(id)) ? "disabled" : "connectable", ids)
+          const sourceId = mode.source.relationshipId
+          const sourceRelationship: Relationship = relationshipsById[sourceId]
+          const impossibleNewChildren: Set<PersonId> = new Set()
+          relationshipIds.forEach(id => {
+            const relationship: Relationship = relationshipsById[id]
+            if (sourceRelationship.parents.length === 2 || relationship.parents.length === 2 || relationship.parents[0] === sourceRelationship.parents[0]) {
+              relationship.children.forEach(child => impossibleNewChildren.add(child))
+            }
+          })
+          modeById = createModeById(id => (sourceRelationship.parents.includes(id) || impossibleNewChildren.has(id)) ? "disabled" : "connectable", ids)
           break
         case "person":
           const fromId = mode.source.personId
@@ -154,7 +162,7 @@ export default function People() {
             id={id}
             name={person.name}
             mode={modeById[id]}
-            position={person.position}
+            data={person}
             onWidthChange={handleWidthChange}
             onOpenOptions={handleOpenOptions}
             onStartDrag={handleStartDrag}

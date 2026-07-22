@@ -3,10 +3,12 @@
 import { useState, useRef, useEffect, useLayoutEffect, MouseEvent } from "react"
 import { PointerEvent } from "react"
 import styles from "./Person.module.css"
-import { PersonId, PersonMode, Position } from "@/types/family-tree.types";
+import { PersonId, PersonMode, PersonSpatialData, Position } from "@/types/family-tree.types";
 import { useEditorState } from "../FamilyTree";
 
 const DRAG_THRESHOLD = 3; // 3px
+
+type PressedState = "none" | "pressed" | "dragging"
 
 /**
  * draggable: the element can be dragged around the screen
@@ -20,7 +22,7 @@ const DRAG_THRESHOLD = 3; // 3px
 type PersonProps = {
   name: string;
   id: PersonId
-  position: Position
+  data: PersonSpatialData
   mode: PersonMode
   onWidthChange: (id: PersonId, width: number) => void;
   onEndDrag: (id: PersonId, position: Position) => void;
@@ -35,24 +37,26 @@ function withinDragThreshold(positionX: number, positionY: number, clientX: numb
   return Math.abs(positionX - clientX) < DRAG_THRESHOLD && Math.abs(positionY - clientY) < DRAG_THRESHOLD
 }
 
-export function Person({ id, name, mode, position, onWidthChange, onOpenOptions, onStartDrag, onEndDrag, onMouseEnter, onMouseLeave, onConnect }: PersonProps) {
+export function Person({ id, name, mode, data, onWidthChange, onOpenOptions, onStartDrag, onEndDrag, onMouseEnter, onMouseLeave, onConnect }: PersonProps) {
   const { mode: editorMode } = useEditorState()
-  const [dragPosition, setDragPosition] = useState<Position>(position)
+  const [dragPosition, setDragPosition] = useState<Position>(data.position)
   const [isDragging, setIsDragging] = useState(false)
-  const [width, setWidth] = useState(80)
+  const pressedState = useRef<PressedState>("none")
+  // const [width, setWidth] = useState(80)
   const dragOffset = useRef({x: 0, y: 0})
   const dragStartPoint = useRef({x: 200, y: 200})
   const ref = useRef<HTMLDivElement>(null)
 
+  const { position, width } = data
   const computedPosition = isDragging ? dragPosition : position
 
   // Note: this runs everytime the list of people in FamilyTree is re-ordered rather
   // than just when this Person component is initially mounted
-  useLayoutEffect(() => {
-    if (!ref.current) return
-    onWidthChange(id, ref.current.getBoundingClientRect().width)
-    setWidth(ref.current.getBoundingClientRect().width)
-  }, [])
+  // useLayoutEffect(() => {
+  //   if (!ref.current) return
+  //   onWidthChange(id, ref.current.getBoundingClientRect().width)
+  //   setWidth(ref.current.getBoundingClientRect().width)
+  // }, [])
 
   useEffect(() => {
     if (editorMode.type === "viewing") {
@@ -73,9 +77,10 @@ export function Person({ id, name, mode, position, onWidthChange, onOpenOptions,
 
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
     if (mode === "draggable" && e.button === 0) {
-      onStartDrag(id) // In FamilyTree this moves the element to the front
-      setIsDragging(true)
-      setDragPosition(position)
+      // onStartDrag(id)
+      // setIsDragging(true)
+      // setDragPosition(position)
+      pressedState.current = "pressed"
       e.currentTarget.setPointerCapture(e.pointerId)
       dragOffset.current = {
         x: position.x - e.clientX,
@@ -97,21 +102,29 @@ export function Person({ id, name, mode, position, onWidthChange, onOpenOptions,
     if (mode !== "draggable") {
       return
     }
-    setIsDragging(false)
-    if (withinDragThreshold(dragStartPoint.current.x, dragStartPoint.current.y, e.clientX, e.clientY)) {
+    if (pressedState.current === "pressed") {
       onOpenOptions(id)
-    } else {      
+    } else if (pressedState.current === "dragging") {      
+      setIsDragging(false)
       onEndDrag(id, {
         x: e.clientX + dragOffset.current.x,
         y: e.clientY + dragOffset.current.y
       })
       e.currentTarget.releasePointerCapture(e.pointerId)
     }
+    pressedState.current = "none"
     e.stopPropagation()
   }
 
   function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
-    if (isDragging && mode === "draggable") {
+    if (pressedState.current === "pressed") {
+      if (!withinDragThreshold(dragStartPoint.current.x, dragStartPoint.current.y, e.clientX, e.clientY)) {
+        pressedState.current = "dragging"
+        onStartDrag(id)
+        setIsDragging(true)
+        setDragPosition(position)
+      }
+    } else if (pressedState.current === "dragging" && mode === "draggable") {
       e.currentTarget.setPointerCapture(e.pointerId)
       setDragPosition({
         x: e.clientX + dragOffset.current.x,

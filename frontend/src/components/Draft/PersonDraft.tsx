@@ -21,6 +21,7 @@ export function PersonDraft({ mode, graph, show, initialConnection, includeConne
   const [connection, setConnection] = useState<Connection>(initialConnection ?? "partner")
   const [position, setPosition]= useState<Position>(mode.type === "connecting" ? mode.newPersonPosition : { x: 0, y: 0 })
   const positionRef = useRef<Position>(position)
+  const width = useRef(0)
 
   const coordinates = useCoordinates()
 
@@ -73,20 +74,30 @@ export function PersonDraft({ mode, graph, show, initialConnection, includeConne
     )
   } else if (mode.type === "naming") {
     function handleSubmit(name: string) {
+      if (name === "") {
+        return
+      }
       if (mode.source.kind === "person") {
         dispatch({
           type: "NAMED_NEW_PERSON",
           fromPerson: true,
           name,
-          connection
+          connection,
+          width: width.current
         })
       } else {
         dispatch({
           type: "NAMED_NEW_PERSON",
           fromPerson: false,
-          name
+          name,
+          width: width.current
         })
       }
+    }
+
+    function handleUpdateWidth(w: number) {
+      width.current = w
+      onUpdateWidth(w)
     }
 
     let optionsOnRight: boolean = true
@@ -99,7 +110,7 @@ export function PersonDraft({ mode, graph, show, initialConnection, includeConne
         position={mode.newPersonPosition}
         includeConnections={includeConnections}
         onUpdateConnection={handleUpdateConnection}
-        onUpdateWidth={onUpdateWidth}
+        onUpdateWidth={handleUpdateWidth}
         onSubmit={handleSubmit}
         right={optionsOnRight}
       />
