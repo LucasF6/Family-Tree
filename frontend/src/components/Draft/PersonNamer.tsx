@@ -8,7 +8,7 @@ import { Connection, Position } from "@/types/family-tree.types";
 
 type PersonNamerProps = {
   position: Position
-  includeConnections?: [Connection, Connection] | [Connection, Connection, Connection]
+  includeConnections: Connection[]
   onUpdateConnection: (connection: Connection) => void;
   onUpdateWidth: (width: number) => void;
   onSubmit: (name: string) => void;
@@ -40,7 +40,7 @@ export default function PersonNamer({ position, onUpdateConnection, onUpdateWidt
 
   return (
     <>
-      {includeConnections && (
+      {includeConnections.length !== 0 && (
         <RelationshipOptions 
           position={{
             x: right ? position.x + width / 2 + 70 + 20 : position.x - width / 2 - 70 - 20,

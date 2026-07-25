@@ -11,7 +11,7 @@ function createNextHistory(state: EditorHistory, nextEditorState: EditorState): 
 }
 
 export function historyReducer(state: EditorHistory, action: EditorAction): EditorHistory {
-  // console.log("action", action)
+  console.log(action)
   let snapshot: EditorState = {
     graph: state.history[state.present],
     mode: state.mode
@@ -32,7 +32,6 @@ export function historyReducer(state: EditorHistory, action: EditorAction): Edit
         }
       }
     case "UNDO":
-      console.log(state)
       return {
         history: state.history,
         present: state.present < state.history.length - 1 ? state.present + 1 : state.present,

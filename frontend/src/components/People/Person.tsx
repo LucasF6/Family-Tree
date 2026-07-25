@@ -4,7 +4,8 @@ import { useState, useRef, useEffect, useLayoutEffect, MouseEvent } from "react"
 import { PointerEvent } from "react"
 import styles from "./Person.module.css"
 import { PersonId, PersonMode, PersonSpatialData, Position } from "@/types/family-tree.types";
-import { useEditorState } from "../FamilyTree";
+import { useEditorState, useEditorStateDispatch } from "../FamilyTree";
+import { useCoordinates, useMousePosition } from "../Canvas/CanvasProvider";
 
 const DRAG_THRESHOLD = 3; // 3px
 
@@ -24,31 +25,29 @@ type PersonProps = {
   id: PersonId
   data: PersonSpatialData
   mode: PersonMode
-  onWidthChange: (id: PersonId, width: number) => void;
-  onEndDrag: (id: PersonId, position: Position) => void;
-  onStartDrag: (id: PersonId) => void;
-  onOpenOptions: (id: PersonId) => void;
   onMouseEnter: (id: PersonId) => void;
   onMouseLeave: (id: PersonId) => void
-  onConnect: (id: PersonId) => void;
 };
 
 function withinDragThreshold(positionX: number, positionY: number, clientX: number, clientY: number) {
   return Math.abs(positionX - clientX) < DRAG_THRESHOLD && Math.abs(positionY - clientY) < DRAG_THRESHOLD
 }
 
-export function Person({ id, name, mode, data, onWidthChange, onOpenOptions, onStartDrag, onEndDrag, onMouseEnter, onMouseLeave, onConnect }: PersonProps) {
+export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: PersonProps) {
   const { mode: editorMode } = useEditorState()
-  const [dragPosition, setDragPosition] = useState<Position>(data.position)
-  const [isDragging, setIsDragging] = useState(false)
+  const dispatch = useEditorStateDispatch()
+  const mousePosition = useMousePosition()
+  const coordinates = useCoordinates()
+  const [dragPosition, setDragPosition] = useState<Position | null>(null)
   const pressedState = useRef<PressedState>("none")
-  // const [width, setWidth] = useState(80)
+  const activePointerId = useRef<number | null>(null)
   const dragOffset = useRef({x: 0, y: 0})
   const dragStartPoint = useRef({x: 200, y: 200})
   const ref = useRef<HTMLDivElement>(null)
 
   const { position, width } = data
-  const computedPosition = isDragging ? dragPosition : position
+  const isDragging = dragPosition !== null
+  const computedPosition = dragPosition ?? position
 
   // Note: this runs everytime the list of people in FamilyTree is re-ordered rather
   // than just when this Person component is initially mounted
@@ -60,7 +59,12 @@ export function Person({ id, name, mode, data, onWidthChange, onOpenOptions, onS
 
   useEffect(() => {
     if (editorMode.type === "viewing") {
-      setIsDragging(false)
+      setDragPosition(null)
+      pressedState.current = "none"
+      if (activePointerId.current && ref.current?.hasPointerCapture(activePointerId.current)) {
+        ref.current.releasePointerCapture(activePointerId.current)
+        activePointerId.current = null
+      }
     }
   }, [editorMode.type])
 
@@ -77,11 +81,9 @@ export function Person({ id, name, mode, data, onWidthChange, onOpenOptions, onS
 
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
     if (mode === "draggable" && e.button === 0) {
-      // onStartDrag(id)
-      // setIsDragging(true)
-      // setDragPosition(position)
       pressedState.current = "pressed"
       e.currentTarget.setPointerCapture(e.pointerId)
+      activePointerId.current = e.pointerId
       dragOffset.current = {
         x: position.x - e.clientX,
         y: position.y - e.clientY
@@ -91,9 +93,15 @@ export function Person({ id, name, mode, data, onWidthChange, onOpenOptions, onS
         y: e.clientY
       }
     } else if (mode === "draggable" && e.button === 2) {
-      // dispatch delete
-    } else if (mode === "connectable") {
-      onConnect(id)
+      dispatch({
+        type: "OPTIONS_OPENED",
+        person: id
+      })
+    } else if (mode === "connectable" && e.button === 0) {
+      dispatch({
+        type: "BEGAN_CONNECTING_EXISTING_PERSON",
+        person: id
+      })
     }
     e.stopPropagation()
   }
@@ -103,16 +111,24 @@ export function Person({ id, name, mode, data, onWidthChange, onOpenOptions, onS
       return
     }
     if (pressedState.current === "pressed") {
-      onOpenOptions(id)
-    } else if (pressedState.current === "dragging") {      
-      setIsDragging(false)
-      onEndDrag(id, {
-        x: e.clientX + dragOffset.current.x,
-        y: e.clientY + dragOffset.current.y
+      dispatch({
+        type: "BEGAN_ADDING_PERSON_FROM_PERSON",
+        startPosition: coordinates.screenToWorld(mousePosition.get()),
+        personId: id
       })
-      e.currentTarget.releasePointerCapture(e.pointerId)
+    } else if (pressedState.current === "dragging") {      
+      setDragPosition(null)
+      dispatch({
+        type: "FINISHED_DRAGGING_PERSON",
+        newPosition: {
+          x: e.clientX + dragOffset.current.x,
+          y: e.clientY + dragOffset.current.y
+        },
+        person: id
+      })
     }
     pressedState.current = "none"
+    activePointerId.current = null
     e.stopPropagation()
   }
 
@@ -120,12 +136,13 @@ export function Person({ id, name, mode, data, onWidthChange, onOpenOptions, onS
     if (pressedState.current === "pressed") {
       if (!withinDragThreshold(dragStartPoint.current.x, dragStartPoint.current.y, e.clientX, e.clientY)) {
         pressedState.current = "dragging"
-        onStartDrag(id)
-        setIsDragging(true)
         setDragPosition(position)
+        dispatch({
+          type: "BEGAN_DRAGGING_PERSON",
+          person: id
+        })
       }
     } else if (pressedState.current === "dragging" && mode === "draggable") {
-      e.currentTarget.setPointerCapture(e.pointerId)
       setDragPosition({
         x: e.clientX + dragOffset.current.x,
         y: e.clientY + dragOffset.current.y

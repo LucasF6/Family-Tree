@@ -147,11 +147,6 @@ export type EditorAction =
       newPosition: Position
     }
   | {
-      type: "CHANGED_PERSON_WIDTH",
-      person: PersonId,
-      newWidth: number
-    }
-  | {
       type: "BEGAN_ADDING_PERSON"
       startPosition: Position
     }

@@ -9,7 +9,7 @@ type PersonDraftProps = {
   mode: Extract<EditorMode, { type: DraftMode }>
   graph: FamilyGraph
   show: boolean
-  includeConnections?: [Connection, Connection] | [Connection, Connection, Connection]
+  includeConnections: Connection[]
   initialConnection?: Connection
   onUpdateConnection: (connection: Connection) => void
   onUpdatePosition: (position: Position) => void
@@ -136,7 +136,7 @@ export function PersonDraft({ mode, graph, show, initialConnection, includeConne
           x: optionsOnRight ? person.position.x + person.width / 2 + 70 + 20 : person.position.x - person.width / 2 - 70 - 20,
           y: person.position.y
         }}
-        includeConnections={["parent", "partner", "child"]}
+        includeConnections={includeConnections}
         onClick={handleSubmit}
         onHover={handleUpdateConnection}
         animation={optionsOnRight ? "right" : "left"}

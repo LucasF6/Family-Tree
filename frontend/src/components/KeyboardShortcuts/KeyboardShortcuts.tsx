@@ -1,6 +1,6 @@
 import { useEditorState, useEditorStateDispatch } from "@/components/FamilyTree"
 import { useEffect } from "react"
-import { useCoordinates, useMousePosition } from "../Canvas/CanvasProvider"
+import { useCoordinates, useMousePosition } from "@/components/Canvas/CanvasProvider"
 
 export default function KeyboardShortcuts() {
   const editorState = useEditorState()
@@ -43,5 +43,5 @@ export default function KeyboardShortcuts() {
     }
   }, [editorState.mode])
 
-  return <></>
+  return null
 }

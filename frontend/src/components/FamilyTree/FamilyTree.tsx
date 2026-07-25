@@ -6,6 +6,7 @@ import Canvas from "@/components/Canvas";
 import People from "@/components/People";
 import OptionsBubble from "@/components/OptionsBubble";
 import { EditorStateProvider } from "./EditorStateProvider";
+import { PeopleWithDraft } from "../PeopleWithDraft/PeopleWithDraft";
 
 export default function FamilyTree() {
   return (
@@ -16,7 +17,7 @@ export default function FamilyTree() {
       >
         <Relationships />
         <OptionsBubble />
-        <People />
+        <PeopleWithDraft />
       </Canvas>
     </EditorStateProvider>
   );

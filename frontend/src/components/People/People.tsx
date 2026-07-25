@@ -55,7 +55,7 @@ export default function People() {
             const relationship: Relationship = relationshipsById[id]
             if (relationship.parents.includes(fromId)) {
               relationship.children.forEach(id => people[id].isChild = true)
-              if (relationship.parents.length === 2) {
+            if (relationship.parents.length === 2) {
                 const partnerId = relationship.parents[0] === fromId ? relationship.parents[1] : relationship.parents[0]
                 people[partnerId].isPartner = true 
               }
@@ -73,7 +73,7 @@ export default function People() {
             }
             const person = people[id]
             if (hasTwoParents) {
-              return person.isPartner && person.isChild ? "disabled" : "connectable"
+              return person.isPartner && person.isParent ? "disabled" : "connectable"
             } else {
               return person.isPartner && (person.isChild || person.isParent) ? "disabled" : "connectable"
             }
@@ -90,36 +90,6 @@ export default function People() {
       focusedPersonId.current = null
     }
   }, [editorState.mode.type])
-
-  function handleWidthChange(id: PersonId, width: number) {
-    dispatch({
-      type: "CHANGED_PERSON_WIDTH",
-      person: id,
-      newWidth: width
-    })
-  }
-
-  function handleOpenOptions(id: PersonId) {
-    dispatch({
-      type: "OPTIONS_OPENED",
-      person: id
-    })
-  }
-
-  function handleStartDrag(id: PersonId) {
-    dispatch({
-      type: "BEGAN_DRAGGING_PERSON",
-      person: id
-    })
-  }
-
-  function handleEndDrag(id: PersonId, newPosition: Position) {
-    dispatch({
-      type: "FINISHED_DRAGGING_PERSON",
-      person: id,
-      newPosition
-    })
-  }
 
   function updateFocusedPerson(id: PersonId | null) {
     dispatch({
@@ -142,18 +112,8 @@ export default function People() {
     }
   }
 
-  function handleConnect(id: PersonId) {
-    dispatch({
-      type: "BEGAN_CONNECTING_EXISTING_PERSON",
-      person: id
-    })
-  }
-
   return (
     <>
-      {(mode.type === "connecting" || mode.type === "choosing-connection" || mode.type === "naming") && (
-        <Draft mode={mode} graph={editorState.graph} dispatch={dispatch} />
-      )}
       {ids.map(id => {
         const person = dataById[id]
         return (
@@ -163,13 +123,8 @@ export default function People() {
             name={person.name}
             mode={modeById[id]}
             data={person}
-            onWidthChange={handleWidthChange}
-            onOpenOptions={handleOpenOptions}
-            onStartDrag={handleStartDrag}
-            onEndDrag={handleEndDrag}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
-            onConnect={handleConnect}
           />
         )
       })}

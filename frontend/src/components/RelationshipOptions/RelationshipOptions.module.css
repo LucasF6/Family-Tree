@@ -6,6 +6,7 @@
   height: fit-content;
   border-radius: 15px;
   overflow: hidden;
+  z-index: 1;
   transform: translate(var(--x), var(--y)) translate(-50%, -50%)
 }
 
@@ -21,12 +22,12 @@
 
 @keyframes animationLeft {
   from {
-    transform: translate(var(--x), var(--y)) translate(-50%, -50%) translateX(150px) scale(0)
+    transform: translate(var(--x), var(--y)) translate(-50%, -50%) translateX(90px) scale(0)
   }
 }
 
 @keyframes animationRight {
   from {
-    transform: translate(var(--x), var(--y)) translate(-50%, -50%) translateX(-150px) scale(0)
+    transform: translate(var(--x), var(--y)) translate(-50%, -50%) translateX(-90px) scale(0)
   }
 }
