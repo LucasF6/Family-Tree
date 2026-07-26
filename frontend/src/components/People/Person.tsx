@@ -11,15 +11,12 @@ const DRAG_THRESHOLD = 3; // 3px
 
 type PressedState = "none" | "pressed" | "dragging"
 
-/**
- * draggable: the element can be dragged around the screen
- * 
- * connectable: a possible second person in a connection of two people
- * 
- * disabled: no functionality
- * 
- * options: options bubble is popped open
-*/
+type DragData = {
+  initialPosition: Position,
+  position: Position,
+  offset: Position
+}
+
 type PersonProps = {
   name: string;
   id: PersonId
@@ -42,20 +39,12 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
   const pressedState = useRef<PressedState>("none")
   const activePointerId = useRef<number | null>(null)
   const dragOffset = useRef({x: 0, y: 0})
-  const dragStartPoint = useRef({x: 200, y: 200})
+  const dragStartPosition = useRef({x: 200, y: 200})
   const ref = useRef<HTMLDivElement>(null)
 
   const { position, width } = data
   const isDragging = dragPosition !== null
   const computedPosition = dragPosition ?? position
-
-  // Note: this runs everytime the list of people in FamilyTree is re-ordered rather
-  // than just when this Person component is initially mounted
-  // useLayoutEffect(() => {
-  //   if (!ref.current) return
-  //   onWidthChange(id, ref.current.getBoundingClientRect().width)
-  //   setWidth(ref.current.getBoundingClientRect().width)
-  // }, [])
 
   useEffect(() => {
     if (editorMode.type === "viewing") {
@@ -75,7 +64,7 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
     colors = "bg-gray-500 hover:bg-gray-600 cursor-grab";
   } else if (mode === "draggable" && isDragging) {
     colors = "bg-gray-600 cursor-grabbing"
-  } else{ // disabled
+  } else { // disabled
     colors = "bg-gray-300 cursor-default";
   }
 
@@ -84,14 +73,18 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
       pressedState.current = "pressed"
       e.currentTarget.setPointerCapture(e.pointerId)
       activePointerId.current = e.pointerId
-      dragOffset.current = {
-        x: position.x - e.clientX,
-        y: position.y - e.clientY
-      }
-      dragStartPoint.current = {
+      const mouseWorldPosition = coordinates.screenToWorld({
         x: e.clientX,
         y: e.clientY
+      })
+      dragOffset.current = {
+        x: position.x - mouseWorldPosition.x,
+        y: position.y - mouseWorldPosition.y
       }
+      dragStartPosition.current = coordinates.screenToWorld({
+        x: e.clientX,
+        y: e.clientY
+      })
     } else if (mode === "draggable" && e.button === 2) {
       dispatch({
         type: "OPTIONS_OPENED",
@@ -118,11 +111,15 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
       })
     } else if (pressedState.current === "dragging") {      
       setDragPosition(null)
+      const mouseWorldPosition = coordinates.screenToWorld({
+        x: e.clientX,
+        y: e.clientY
+      })
       dispatch({
         type: "FINISHED_DRAGGING_PERSON",
         newPosition: {
-          x: e.clientX + dragOffset.current.x,
-          y: e.clientY + dragOffset.current.y
+          x: mouseWorldPosition.x + dragOffset.current.x,
+          y: mouseWorldPosition.y + dragOffset.current.y
         },
         person: id
       })
@@ -134,7 +131,7 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
 
   function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
     if (pressedState.current === "pressed") {
-      if (!withinDragThreshold(dragStartPoint.current.x, dragStartPoint.current.y, e.clientX, e.clientY)) {
+      if (!withinDragThreshold(dragStartPosition.current.x, dragStartPosition.current.y, e.clientX, e.clientY)) {
         pressedState.current = "dragging"
         setDragPosition(position)
         dispatch({
@@ -143,9 +140,13 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
         })
       }
     } else if (pressedState.current === "dragging" && mode === "draggable") {
+      const mouseWorldPosition = coordinates.screenToWorld({
+        x: e.clientX,
+        y: e.clientY
+      })
       setDragPosition({
-        x: e.clientX + dragOffset.current.x,
-        y: e.clientY + dragOffset.current.y
+        x: mouseWorldPosition.x + dragOffset.current.x,
+        y: mouseWorldPosition.y + dragOffset.current.y
       })
       e.stopPropagation()
     }

@@ -3,34 +3,38 @@ import { PointerEvent, useRef, useEffect, useState, WheelEvent } from "react";
 import { CanvasProvider, CoordinatesContext, CoordinatesContextValue, MousePositionContextValue, ViewportContext } from "./CanvasProvider";
 import KeyboardShortcuts from "../KeyboardShortcuts";
 
+type Camera = {
+  panX: number,
+  panY: number,
+  zoom: number
+}
+
 type CanvasProps = { 
   children: React.ReactNode
   overlay: React.ReactNode
+  keyboardShortcuts: React.ReactNode
   disabled: boolean
 }
 
-export default function Canvas({ children, overlay, disabled }: CanvasProps) {
-  const isDragging = useRef(false)
-  const dragOffset = useRef<Position>({ x: 0, y: 0 })
-  const panRef = useRef<Position>({ x: 0, y: 0 })
-  const [panPosition, setPanPosition] = useState<Position>({ x: 0, y: 0 })
-  const ref = useRef<HTMLDivElement>(null)
+export default function Canvas({ children, overlay, keyboardShortcuts, disabled }: CanvasProps) {
+  const invariantPosition = useRef<Position | null>(null) // The user is dragging the canvas if this is non-null
+  const canvasRef = useRef<HTMLDivElement>(null)
   const [viewport, setViewport] = useState<Dimensions | null>(null)
   const mousePosition = useRef<Position>({ x: 0, y: 0 })
-  const [zoom, setZoom] = useState(1)
-  const zoomRef = useRef(1)
+  const [camera, setCamera] = useState<Camera>({ panX: 0, panY: 0, zoom: 1 })
+  const cameraRef = useRef<Camera>(camera)
 
   const coordinates: CoordinatesContextValue = {
     screenToWorld(screenPosition: Position): Position {
       return {
-        x: (screenPosition.x - panRef.current.x) / zoomRef.current,
-        y: (screenPosition.y - panRef.current.y) / zoomRef.current
+        x: (screenPosition.x - cameraRef.current.panX) / cameraRef.current.zoom,
+        y: (screenPosition.y - cameraRef.current.panY) / cameraRef.current.zoom
       }
     },
     worldToScreen(worldPosition: Position): Position {
       return {
-        x: panRef.current.x + zoomRef.current * worldPosition.x,
-        y: panRef.current.y + zoomRef.current * worldPosition.y
+        x: cameraRef.current.panX + cameraRef.current.zoom * worldPosition.x,
+        y: cameraRef.current.panY + cameraRef.current.zoom * worldPosition.y
       }
     }
   }
@@ -40,15 +44,11 @@ export default function Canvas({ children, overlay, disabled }: CanvasProps) {
   }
 
   useEffect(() => {
-    panRef.current = panPosition
-  }, [panPosition])
-
-  useEffect(() => {
-    zoomRef.current = zoom
-  }, [zoom])
+    cameraRef.current = camera
+  }, [camera])
   
   useEffect(() => {
-    if (!ref.current) return
+    if (!canvasRef.current) return
 
     const observer = new ResizeObserver(([entry]) => {
       setViewport({
@@ -57,16 +57,15 @@ export default function Canvas({ children, overlay, disabled }: CanvasProps) {
       })
     })
 
-    observer.observe(ref.current)
+    observer.observe(canvasRef.current)
 
     return () => observer.disconnect()
   }, [])
 
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
     if (!disabled && e.button === 0) {
-      isDragging.current = true
       e.currentTarget.setPointerCapture(e.pointerId)
-      dragOffset.current = coordinates.screenToWorld({
+      invariantPosition.current = coordinates.screenToWorld({
         x: e.clientX,
         y: e.clientY
       })
@@ -74,23 +73,23 @@ export default function Canvas({ children, overlay, disabled }: CanvasProps) {
   }
 
   function handlePointerUp(e: PointerEvent<HTMLDivElement>) {
-    isDragging.current = false
+    invariantPosition.current = null
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId)
     }
   }
 
   function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
-    if (isDragging.current) {
-      const mouseWorldPosition = coordinates.screenToWorld({
-        x: e.clientX,
-        y: e.clientY
-      })
-      setPanPosition(coordinates.worldToScreen({
-        x: mouseWorldPosition.x - dragOffset.current.x,
-        y: mouseWorldPosition.y - dragOffset.current.y
-      }))
-    }
+    setCamera(prev => {
+      if (!invariantPosition.current) {
+        return prev
+      }
+      return {
+        panX: e.clientX - prev.zoom * invariantPosition.current.x,
+        panY: e.clientY - prev.zoom * invariantPosition.current.y,
+        zoom: prev.zoom
+      }
+    })
     mousePosition.current = {
       x: e.clientX,
       y: e.clientY
@@ -98,12 +97,14 @@ export default function Canvas({ children, overlay, disabled }: CanvasProps) {
   }
 
   function handleWheel(e: WheelEvent<HTMLDivElement>) {
-    const ratio = Math.exp(-e.deltaY / 1000)
-    setZoom(prev => prev * ratio)
-    setPanPosition(prev => ({
-      x: e.clientX * (1 - ratio) + prev.x * ratio,
-      y: e.clientY * (1 - ratio) + prev.y * ratio
-    }))
+    setCamera(prev => {
+      const ratio = Math.exp(-e.deltaY / 1000)
+      return {
+        panX: e.clientX * (1 - ratio) + prev.panX * ratio,
+        panY: e.clientY * (1 - ratio) + prev.panY * ratio,
+        zoom: prev.zoom * ratio
+      }
+    })
   }
   
   return (
@@ -118,19 +119,19 @@ export default function Canvas({ children, overlay, disabled }: CanvasProps) {
         onPointerUp={handlePointerUp}
         onPointerMove={handlePointerMove}
         onWheel={handleWheel}
-        ref={ref}
+        ref={canvasRef}
       >
         <div
           className="w-full h-full"
           style={{
             transformOrigin: `0 0`,
-            transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoom})`
+            transform: `translate(${camera.panX}px, ${camera.panY}px) scale(${camera.zoom})`
           }}
         >
           {children}
         </div>
         {overlay}
-        <KeyboardShortcuts />
+        {keyboardShortcuts}
       </div>
     </CanvasProvider>
   )
