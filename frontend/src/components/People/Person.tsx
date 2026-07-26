@@ -9,13 +9,21 @@ import { useCoordinates, useMousePosition } from "../Canvas/CanvasProvider";
 
 const DRAG_THRESHOLD = 3; // 3px
 
-type PressedState = "none" | "pressed" | "dragging"
-
-type DragData = {
-  initialPosition: Position,
-  position: Position,
-  offset: Position
-}
+type PersonState = 
+  | {
+      type: "none"
+    }
+  | {
+      type: "pressed"
+      pressedPosition: Position
+      offset: Position
+      pointerId: number
+    }
+  | {
+      type: "dragging"
+      offset: Position
+      pointerId: number
+    }
 
 type PersonProps = {
   name: string;
@@ -33,27 +41,23 @@ function withinDragThreshold(positionX: number, positionY: number, clientX: numb
 export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: PersonProps) {
   const { mode: editorMode } = useEditorState()
   const dispatch = useEditorStateDispatch()
-  const mousePosition = useMousePosition()
   const coordinates = useCoordinates()
-  const [dragPosition, setDragPosition] = useState<Position | null>(null)
-  const pressedState = useRef<PressedState>("none")
-  const activePointerId = useRef<number | null>(null)
-  const dragOffset = useRef({x: 0, y: 0})
-  const dragStartPosition = useRef({x: 200, y: 200})
-  const ref = useRef<HTMLDivElement>(null)
+
+  const [previewDragPosition, setPreviewDragPosition] = useState<Position | null>(null)
+  const state = useRef<PersonState>({ type: "none" })
+  
+  const cardRef = useRef<HTMLDivElement>(null)
 
   const { position, width } = data
-  const isDragging = dragPosition !== null
-  const computedPosition = dragPosition ?? position
+  const isDragging = previewDragPosition !== null
+  const computedPosition = previewDragPosition ?? position
 
   useEffect(() => {
     if (editorMode.type === "viewing") {
-      setDragPosition(null)
-      pressedState.current = "none"
-      if (activePointerId.current && ref.current?.hasPointerCapture(activePointerId.current)) {
-        ref.current.releasePointerCapture(activePointerId.current)
-        activePointerId.current = null
+      if (state.current.type === "dragging" && cardRef.current?.hasPointerCapture(state.current.pointerId)) {
+        cardRef.current.releasePointerCapture(state.current.pointerId)
       }
+      state.current = { type: "none" }
     }
   }, [editorMode.type])
 
@@ -70,21 +74,20 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
 
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
     if (mode === "draggable" && e.button === 0) {
-      pressedState.current = "pressed"
-      e.currentTarget.setPointerCapture(e.pointerId)
-      activePointerId.current = e.pointerId
       const mouseWorldPosition = coordinates.screenToWorld({
         x: e.clientX,
         y: e.clientY
       })
-      dragOffset.current = {
-        x: position.x - mouseWorldPosition.x,
-        y: position.y - mouseWorldPosition.y
+      state.current = {
+        type: "pressed",
+        pressedPosition: mouseWorldPosition,
+        offset: {
+          x: position.x - mouseWorldPosition.x,
+          y: position.y - mouseWorldPosition.y
+        },
+        pointerId: e.pointerId
       }
-      dragStartPosition.current = coordinates.screenToWorld({
-        x: e.clientX,
-        y: e.clientY
-      })
+      e.currentTarget.setPointerCapture(e.pointerId)
     } else if (mode === "draggable" && e.button === 2) {
       dispatch({
         type: "OPTIONS_OPENED",
@@ -103,14 +106,17 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
     if (mode !== "draggable") {
       return
     }
-    if (pressedState.current === "pressed") {
+    if (state.current.type === "pressed") {
       dispatch({
         type: "BEGAN_ADDING_PERSON_FROM_PERSON",
-        startPosition: coordinates.screenToWorld(mousePosition.get()),
+        startPosition: coordinates.screenToWorld({
+          x: e.clientX,
+          y: e.clientY
+        }),
         personId: id
       })
-    } else if (pressedState.current === "dragging") {      
-      setDragPosition(null)
+    } else if (state.current.type === "dragging") {      
+      setPreviewDragPosition(null)
       const mouseWorldPosition = coordinates.screenToWorld({
         x: e.clientX,
         y: e.clientY
@@ -118,35 +124,37 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
       dispatch({
         type: "FINISHED_DRAGGING_PERSON",
         newPosition: {
-          x: mouseWorldPosition.x + dragOffset.current.x,
-          y: mouseWorldPosition.y + dragOffset.current.y
+          x: mouseWorldPosition.x + state.current.offset.x,
+          y: mouseWorldPosition.y + state.current.offset.y
         },
         person: id
       })
     }
-    pressedState.current = "none"
-    activePointerId.current = null
+    state.current = { type: "none" }
     e.stopPropagation()
   }
 
   function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
-    if (pressedState.current === "pressed") {
-      if (!withinDragThreshold(dragStartPosition.current.x, dragStartPosition.current.y, e.clientX, e.clientY)) {
-        pressedState.current = "dragging"
-        setDragPosition(position)
+    const mouseWorldPosition = coordinates.screenToWorld({
+      x: e.clientX,
+      y: e.clientY
+    })
+    if (state.current.type === "pressed") {
+      if (!withinDragThreshold(state.current.pressedPosition.x, state.current.pressedPosition.y, mouseWorldPosition.x, mouseWorldPosition.y)) {
+        state.current = {
+          ...state.current,
+          type: "dragging",
+        }
+        setPreviewDragPosition(position)
         dispatch({
           type: "BEGAN_DRAGGING_PERSON",
           person: id
         })
       }
-    } else if (pressedState.current === "dragging" && mode === "draggable") {
-      const mouseWorldPosition = coordinates.screenToWorld({
-        x: e.clientX,
-        y: e.clientY
-      })
-      setDragPosition({
-        x: mouseWorldPosition.x + dragOffset.current.x,
-        y: mouseWorldPosition.y + dragOffset.current.y
+    } else if (state.current.type === "dragging" && mode === "draggable") {
+      setPreviewDragPosition({
+        x: mouseWorldPosition.x + state.current.offset.x,
+        y: mouseWorldPosition.y + state.current.offset.y
       })
       e.stopPropagation()
     }
@@ -195,7 +203,7 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onContextMenu={handleContextMenu}
-        ref={ref}
+        ref={cardRef}
       >
         {name}
       </div>

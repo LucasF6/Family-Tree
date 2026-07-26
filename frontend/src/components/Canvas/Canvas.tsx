@@ -16,6 +16,8 @@ type CanvasProps = {
   disabled: boolean
 }
 
+const zoomFactor: number = 0.001
+
 export default function Canvas({ children, overlay, keyboardShortcuts, disabled }: CanvasProps) {
   const invariantPosition = useRef<Position | null>(null) // The user is dragging the canvas if this is non-null
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -98,7 +100,7 @@ export default function Canvas({ children, overlay, keyboardShortcuts, disabled 
 
   function handleWheel(e: WheelEvent<HTMLDivElement>) {
     setCamera(prev => {
-      const ratio = Math.exp(-e.deltaY / 1000)
+      const ratio = Math.exp(-e.deltaY * zoomFactor)
       return {
         panX: e.clientX * (1 - ratio) + prev.panX * ratio,
         panY: e.clientY * (1 - ratio) + prev.panY * ratio,
