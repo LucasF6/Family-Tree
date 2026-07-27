@@ -1,3 +1,5 @@
+'use client'
+
 import { useCoordinates, useMousePosition } from "../Canvas/CanvasProvider";
 import { useEditorState, useEditorStateDispatch } from "../FamilyTree";
 import { validate } from "../FamilyTree/validate";

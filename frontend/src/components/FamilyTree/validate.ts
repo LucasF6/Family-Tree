@@ -17,6 +17,8 @@ function isValidParentCount(value: number): boolean {
  * 6. If `graph.relationshipsById[id].parents` has length 1, `graph.relationshipsById[id].children` is nonempty
  * 7. The collection of `graph.relationshipsById[id].children` where `id` is in `graph.relationshipIds` is pairwise disjoint
  * 
+ * TODO: add that there can be no cycles
+ * 
  * @param graph The graph to validate
  */
 export function validate(graph: FamilyGraph): boolean {

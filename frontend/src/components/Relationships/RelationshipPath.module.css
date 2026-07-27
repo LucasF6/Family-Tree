@@ -1,0 +1,19 @@
+
+.dottedPath {
+  animation-name: dottedAnimation;
+  animation-duration: 0.5s;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+
+@keyframes dottedAnimation {
+  0% {
+    stroke-dasharray: 0 0.5 0 0 0 0.5 0
+  }
+  50% {
+    stroke-dasharray: 0 0 0.5 0 0.5 0 0
+  }
+  100% {
+    stroke-dasharray: 0 0 0 1 0 0 0
+  }
+}

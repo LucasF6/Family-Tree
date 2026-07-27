@@ -3,8 +3,11 @@
 import clsx from "clsx";
 import { getAveragePositionBetweenPartners, getChildToParentPath, getChildToPositionPath, getPartnerToPartnerPath } from "./paths";
 import { Position, RelationshipData, } from "@/types/family-tree.types";
-import { PointerEvent, useState, WheelEvent, MouseEvent } from "react"
+import { PointerEvent, useState, WheelEvent, MouseEvent, useEffect, useRef } from "react"
+import { useEditorStateDispatch } from "../FamilyTree";
+import styles from "./RelationshipPath.module.css"
 
+const defaultStrength: number = 50
 
 type RelationshipPathProps = {
   data: RelationshipData
@@ -14,8 +17,19 @@ type RelationshipPathProps = {
 }
 
 export function RelationshipPath({ data, onClick, disabled, dotted = false }: RelationshipPathProps) {
-  const [strength, setStrength] = useState(50)
+  const dispatch = useEditorStateDispatch()
+  const [previewStrength, setPreviewStrength] = useState<number | null>(null)
+  const timeoutId = useRef<number | null>(null)
 
+  useEffect(() => {
+    return () => {
+      if (timeoutId.current !== null) {
+        window.clearTimeout(timeoutId.current)
+      }
+    }
+  }, [])
+
+  const strength: number = previewStrength ?? data.strength ?? defaultStrength
   const pathData: string[] = []
   const { parents, children } = data
   if (parents.length === 2) {
@@ -33,6 +47,7 @@ export function RelationshipPath({ data, onClick, disabled, dotted = false }: Re
 
   function handlePointerDown(e: PointerEvent<SVGGElement>) {
     if (disabled) return
+
     if (e.button === 0) {
       onClick?.({ x: e.clientX, y: e.clientY })
       e.stopPropagation()
@@ -42,15 +57,32 @@ export function RelationshipPath({ data, onClick, disabled, dotted = false }: Re
   }
 
   function handleWheel(e: WheelEvent<SVGGElement>) {
-    if (disabled) return
-    setStrength(prev => {
-      const next = prev - 0.05 * e.deltaY
-      if ((e.deltaY > 0 && next >= 10) || (e.deltaY < 0 && next <= 100)) {
-        return next
-      }
-      return prev
-    })
+    if (disabled) {
+      return
+    }
     e.stopPropagation()
+    const next = strength - 0.05 * e.deltaY
+    if (next < 10 || next > 100) {
+      return
+    }
+
+    
+    if (timeoutId.current !== null) {
+      window.clearTimeout(timeoutId.current)
+    }
+    
+    timeoutId.current = window.setTimeout(() => {
+      dispatch({
+        type: "CHANGED_RELATIONSHIP_STRENGTH",
+        relationshipId: data.id,
+        strength: next
+      })
+      setPreviewStrength(null)
+      timeoutId.current = null
+    }, 500)
+
+    setPreviewStrength(next)
+
   }
 
   function handleContextMenu(e: MouseEvent<SVGGElement>) {
@@ -70,18 +102,17 @@ export function RelationshipPath({ data, onClick, disabled, dotted = false }: Re
         {pathData.map((data, index) => (
           <g key={index}>
             <path
-              key={`visible-path-${index}`}
               className={clsx(
                 "stroke-white", 
                 !disabled && "group-hover:stroke-green-400",
-                dotted && "[stroke-dasharray:5_5]"
+                dotted && styles.dottedPath
               )}
+              pathLength="1"
               strokeWidth="2"
               fill="none"
               d={data}
             />
             <path
-              key={`hitbox-path-${index}`}
               className="stroke-transparent"
               strokeWidth="16"
               fill="none"

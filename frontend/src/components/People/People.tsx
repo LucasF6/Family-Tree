@@ -1,8 +1,9 @@
+'use client'
+
 import { PersonId, PersonData, EditorState, EditorAction, Position, PersonMode, add, RelationshipId, Relationship } from "@/types/family-tree.types"
 import { Person } from "./Person"
 import { useEffect, useRef } from "react"
 import { useEditorState, useEditorStateDispatch } from "../FamilyTree"
-import Draft from "../Draft"
 
 function createModeById(mode: (id: PersonId) => PersonMode, ids: PersonId[]): Record<PersonId, PersonMode> {
   return Object.fromEntries(ids.map(id => [id, mode(id)]))
@@ -16,7 +17,7 @@ function createUniformModeById(mode: PersonMode, ids: PersonId[]): Record<Person
 export default function People() {
   const editorState = useEditorState()
   const dispatch = useEditorStateDispatch()
-  const focusedPersonId = useRef<PersonId | null>(null)
+  const hoveredPersonId = useRef<PersonId | null>(null)
 
   const { peopleIds: ids, peopleById: dataById, relationshipIds, relationshipsById } = editorState.graph
   const mode = editorState.mode
@@ -87,28 +88,28 @@ export default function People() {
 
   useEffect(() => {
     if (editorState.mode.type === "connecting") {
-      focusedPersonId.current = null
+      hoveredPersonId.current = null
     }
   }, [editorState.mode.type])
 
-  function updateFocusedPerson(id: PersonId | null) {
+  function hoverPerson(id: PersonId | null) {
     dispatch({
-      type: "UPDATED_FOCUSED_PERSON",
+      type: "HOVERED_PERSON",
       person: id
     })
   }
 
   function handleMouseEnter(id: PersonId) {
-    if (id !== focusedPersonId.current) {
-      focusedPersonId.current = id
-      updateFocusedPerson(id)
+    if (id !== hoveredPersonId.current) {
+      hoveredPersonId.current = id
+      hoverPerson(id)
     }
   }
 
   function handleMouseLeave(id: PersonId) {
-    if (id === focusedPersonId.current) {
-      focusedPersonId.current = null
-      updateFocusedPerson(null)
+    if (id === hoveredPersonId.current) {
+      hoveredPersonId.current = null
+      hoverPerson(null)
     }
   }
 

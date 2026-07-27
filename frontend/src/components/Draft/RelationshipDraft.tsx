@@ -1,3 +1,5 @@
+'use client'
+
 import { Connection, NewRelationshipSource, NewRelationshipSourceWithConnection, PersonData, PersonId, PersonSpatialData, Position, Relationship, RelationshipDraftData, RelationshipId } from "@/types/family-tree.types"
 import { RelationshipPathDraft } from "./RelationshipPathDraft"
 

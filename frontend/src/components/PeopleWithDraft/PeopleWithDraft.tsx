@@ -1,3 +1,5 @@
+'use client'
+
 import Draft from "@/components/Draft";
 import { useEditorState, useEditorStateDispatch } from "@/components/FamilyTree";
 import People from "@/components/People";

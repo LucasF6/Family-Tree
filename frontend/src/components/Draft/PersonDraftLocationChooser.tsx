@@ -2,7 +2,6 @@
 
 import styles from "./PersonDraftLocationChooser.module.css"
 import clsx from "clsx";
-import { useEffect, useState, useRef, useContext } from "react"
 import { Position } from "@/types/family-tree.types";
 import { useCoordinates, useViewport } from "@/components/Canvas/CanvasProvider";
 

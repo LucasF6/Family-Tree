@@ -46,16 +46,12 @@ export type FamilyGraph = {
 }
 
 // Data to draw existing relationships
-export type RelationshipData = { id: RelationshipId } & (
-  | {
-      parents: [PersonSpatialData]
-      children: [PersonSpatialData, ...PersonSpatialData[]]
-    }
-  | {
-      parents: [PersonSpatialData, PersonSpatialData]
-      children: PersonSpatialData[]
-    }
-  )
+export type RelationshipData = { 
+  id: RelationshipId
+  parents: PersonSpatialData[]
+  children: PersonSpatialData[]
+  strength?: number
+} 
 
 export type RelationshipDraftData =
   | {
@@ -71,16 +67,12 @@ export type RelationshipDraftData =
     }
 
 // Relationships by people ids stored in state
-export type Relationship = { id: RelationshipId } & (
-  | {
-      parents: [PersonId]
-      children: [PersonId] // , ...PersonId[]]
-    }
-  | {
-      parents: [PersonId, PersonId]
-      children: PersonId[]
-    }
-)
+export type Relationship = { 
+  id: RelationshipId 
+  parents: PersonId[]
+  children: PersonId[]
+  strength?: number
+}
 
 // A new relationship formed by clicking on the source
 // Clicking on a relationship only can result in new children
@@ -186,17 +178,19 @@ export type EditorAction =
       connection: Connection
     }
   | {
-      type: "UPDATED_FOCUSED_PERSON"
+      type: "HOVERED_PERSON"
       person: PersonId | null
+    }
+  | {
+      type: "CHANGED_RELATIONSHIP_STRENGTH"
+      relationshipId: RelationshipId
+      strength: number
     }
   | {
       type: "UNDO"
     }
   | {
       type: "REDO"
-    }
-  | {
-      type: "DEBUG"
     }
 
 export type EditorHistory = {

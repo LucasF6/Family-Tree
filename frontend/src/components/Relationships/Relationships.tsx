@@ -1,5 +1,6 @@
+'use client'
+
 import {
-  PersonSpatialData,
   Position,
   RelationshipData,
   RelationshipId,
@@ -18,9 +19,10 @@ export function Relationships() {
 
   const relationshipData: RelationshipData[] = relationshipIds.map(relId => ({
     id: relId,
-    parents: relationshipsById[relId].parents.map(id => peopleById[id]) as PersonSpatialData[],
-    children: relationshipsById[relId].children.map(id  => peopleById[id]) as PersonSpatialData[]
-  } as RelationshipData))
+    parents: relationshipsById[relId].parents.map(id => peopleById[id]),
+    children: relationshipsById[relId].children.map(id  => peopleById[id]),
+    strength: relationshipsById[relId].strength
+  }))
 
   function handleClick(id: RelationshipId, position: Position) {
     dispatch({

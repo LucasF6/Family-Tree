@@ -1,3 +1,5 @@
+'use client'
+
 import { FamilyGraph, PersonData, PersonId, PersonSpatialData, Position, RelationshipData, RelationshipId } from "@/types/family-tree.types";
 import styles from "./Person.module.css"
 import { useEditorState } from "../FamilyTree";
@@ -6,7 +8,6 @@ import { RelationshipPath } from "../Relationships";
 import { useMemo } from "react";
 
 function relationshipsAssociatedWith(id: PersonId, graph: FamilyGraph): RelationshipId[] {
-  console.log("relationships!!")
   return graph.relationshipIds.filter(relId => {
     const relationship = graph.relationshipsById[relId]
     return relationship.parents.includes(id) || relationship.children.includes(id)
@@ -33,13 +34,12 @@ export function DragPreview({ personId, personData, previewPosition }: DragPrevi
   }
   const previewRelationshipData: RelationshipData[] = initialRelationships.map(relId => {
     const relationship = relationshipsById[relId]
-    const parents: PersonSpatialData[] = relationship.parents.map(parentId => parentId === personId ? personPreviewData : peopleById[parentId])
-    const children: PersonSpatialData[] = relationship.children.map(childId => childId === personId ? personPreviewData : peopleById[childId])
     return {
       id: relId,
-      parents,
-      children
-    } as RelationshipData
+      parents: relationship.parents.map(parentId => parentId === personId ? personPreviewData : peopleById[parentId]),
+      children: relationship.children.map(childId => childId === personId ? personPreviewData : peopleById[childId]),
+      strength: relationship.strength
+    }
   })
   
   return (

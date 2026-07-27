@@ -1,3 +1,5 @@
+'use client'
+
 import { Dimensions, EditorMode, Position, DraftMode, Connection, EditorAction, PersonData, PersonId, Relationship, RelationshipId, PersonSpatialData, FamilyGraph } from "@/types/family-tree.types"
 import { PersonDraftLocationChooser } from "./PersonDraftLocationChooser"
 import PersonNamer from "./PersonNamer"

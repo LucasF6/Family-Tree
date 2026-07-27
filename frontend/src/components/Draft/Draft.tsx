@@ -1,3 +1,5 @@
+'use client'
+
 import { Connection, DraftMode, EditorAction, EditorMode, FamilyGraph, NewRelationshipSource, NewRelationshipSourceWithConnection, PersonId, PersonSpatialData, Position } from "@/types/family-tree.types"
 import { PersonDraft } from "./PersonDraft"
 import { useState } from "react"

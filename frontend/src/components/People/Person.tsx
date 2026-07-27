@@ -178,20 +178,18 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
     e.preventDefault()
   }
 
+  function handleLostPointerCapture() {
+    if (state.current.type === "none") {
+      return
+    }
+    dispatch({
+      type: "CANCELED"
+    })
+    state.current = { type: "none" }
+  }
+
   return (
     <>
-      {/* {isDragging && (
-        <div 
-          className={`
-            ${styles.person}
-            ${'bg-gray-800'}
-          `}
-          style={{
-            transform: `translate(${position.x}px, ${position.y}px) translate(-50%, -50%)`,
-            width
-          }}
-        />
-      )} */}
       {isDragging && <DragPreview personId={id} personData={data} previewPosition={previewDragPosition}/>}
       <div 
         className={`
@@ -206,6 +204,7 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onContextMenu={handleContextMenu}
+        onLostPointerCapture={handleLostPointerCapture}
         ref={cardRef}
       >
         {name}

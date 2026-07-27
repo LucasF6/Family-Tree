@@ -1,7 +1,6 @@
 import { EditorState, EditorAction, Connection, PersonData, PersonId, RelationshipId, FamilyGraph, EditorMode, Relationship } from "@/types/family-tree.types"
 import { v4 } from "uuid"
 
-
 function createRelationship(draft: EditorState, callback: (id: RelationshipId) => Relationship): RelationshipId {
   const id: RelationshipId = v4() as RelationshipId
   draft.graph.relationshipsById[id] = callback(id)
@@ -10,6 +9,7 @@ function createRelationship(draft: EditorState, callback: (id: RelationshipId) =
 }
 
 function createDirectRelationship(draft: EditorState, connection: Connection, from: PersonId, to: PersonId): RelationshipId {
+  const id: RelationshipId = v4() as RelationshipId
   return createRelationship(draft, id => {
     switch (connection) {
       case "parent":
@@ -242,11 +242,14 @@ export default function editorReducer(draft: EditorState, action: EditorAction):
       draft.mode = { type: "viewing" }
       break
     }
-    case "UPDATED_FOCUSED_PERSON":
+    case "HOVERED_PERSON":
       if (draft.mode.type !== "connecting") {
         throw new Error("Can only update focused person in connecting mode!")
       }
       draft.mode.focusedPerson = action.person
+      break
+    case "CHANGED_RELATIONSHIP_STRENGTH":
+      draft.graph.relationshipsById[action.relationshipId].strength = action.strength
       break
   }
   

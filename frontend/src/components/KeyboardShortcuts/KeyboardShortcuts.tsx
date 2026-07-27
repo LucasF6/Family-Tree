@@ -1,3 +1,5 @@
+'use client'
+
 import { useEditorState, useEditorStateDispatch } from "@/components/FamilyTree"
 import { useEffect } from "react"
 import { useCoordinates, useMousePosition } from "@/components/Canvas/CanvasProvider"

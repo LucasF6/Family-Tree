@@ -1,3 +1,5 @@
+'use client'
+
 import { PersonData, PersonId, Position } from "@/types/family-tree.types";
 import styles from "./OptionsBubble.module.css"
 import { useEditorState, useEditorStateDispatch } from "../FamilyTree";
