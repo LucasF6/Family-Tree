@@ -6,6 +6,7 @@ import styles from "./Person.module.css"
 import { PersonId, PersonMode, PersonSpatialData, Position } from "@/types/family-tree.types";
 import { useEditorState, useEditorStateDispatch } from "../FamilyTree";
 import { useCoordinates, useMousePosition } from "../Canvas/CanvasProvider";
+import { DragPreview } from "./DragPreview";
 
 const DRAG_THRESHOLD = 3; // 3px
 
@@ -48,7 +49,7 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
   
   const cardRef = useRef<HTMLDivElement>(null)
 
-  const { position, width } = data
+  const { position } = data
   const isDragging = previewDragPosition !== null
   const computedPosition = previewDragPosition ?? position
 
@@ -57,6 +58,7 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
       if (state.current.type === "dragging" && cardRef.current?.hasPointerCapture(state.current.pointerId)) {
         cardRef.current.releasePointerCapture(state.current.pointerId)
       }
+      setPreviewDragPosition(null)
       state.current = { type: "none" }
     }
   }, [editorMode.type])
@@ -178,7 +180,7 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
 
   return (
     <>
-      {isDragging && (
+      {/* {isDragging && (
         <div 
           className={`
             ${styles.person}
@@ -189,7 +191,8 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
             width
           }}
         />
-      )}
+      )} */}
+      {isDragging && <DragPreview personId={id} personData={data} previewPosition={previewDragPosition}/>}
       <div 
         className={`
           ${styles.person}

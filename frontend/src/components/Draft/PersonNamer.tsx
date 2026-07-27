@@ -5,6 +5,7 @@ import styles from "./PersonNamer.module.css"
 import { KeyboardEvent, ChangeEvent } from "react";
 import RelationshipOptions from "@/components/RelationshipOptions";
 import { Connection, Position } from "@/types/family-tree.types";
+import { useCoordinates } from "../Canvas/CanvasProvider";
 
 type PersonNamerProps = {
   position: Position
@@ -16,6 +17,7 @@ type PersonNamerProps = {
 }
 
 export default function PersonNamer({ position, onUpdateConnection, onUpdateWidth, onSubmit, right = false, includeConnections }: PersonNamerProps) {
+  const coordinates = useCoordinates()
   const [name, setName] = useState("")
   const [width, setWidth] = useState(80.02)
   const ref = useRef<HTMLDivElement>(null)
@@ -29,7 +31,7 @@ export default function PersonNamer({ position, onUpdateConnection, onUpdateWidt
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     setName(e.target.value)
     if (!ref.current) return
-    const w = ref.current.getBoundingClientRect().width
+    const w = coordinates.screenToWorldLength(ref.current.getBoundingClientRect().width)
     setWidth(w)
     onUpdateWidth(w)
   }

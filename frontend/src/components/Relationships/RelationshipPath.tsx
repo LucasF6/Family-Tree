@@ -9,10 +9,11 @@ import { PointerEvent, useState, WheelEvent, MouseEvent } from "react"
 type RelationshipPathProps = {
   data: RelationshipData
   disabled: boolean
-  onClick: (position: Position) => void;
+  dotted?: boolean
+  onClick?: (position: Position) => void;
 }
 
-export function RelationshipPath({ data, onClick, disabled }: RelationshipPathProps) {
+export function RelationshipPath({ data, onClick, disabled, dotted = false }: RelationshipPathProps) {
   const [strength, setStrength] = useState(50)
 
   const pathData: string[] = []
@@ -33,7 +34,7 @@ export function RelationshipPath({ data, onClick, disabled }: RelationshipPathPr
   function handlePointerDown(e: PointerEvent<SVGGElement>) {
     if (disabled) return
     if (e.button === 0) {
-      onClick({ x: e.clientX, y: e.clientY })
+      onClick?.({ x: e.clientX, y: e.clientY })
       e.stopPropagation()
     } else if (e.button === 2) {
       // dispatch delete option
@@ -70,7 +71,11 @@ export function RelationshipPath({ data, onClick, disabled }: RelationshipPathPr
           <g key={index}>
             <path
               key={`visible-path-${index}`}
-              className={clsx("stroke-white", !disabled && "group-hover:stroke-green-400")}
+              className={clsx(
+                "stroke-white", 
+                !disabled && "group-hover:stroke-green-400",
+                dotted && "[stroke-dasharray:5_5]"
+              )}
               strokeWidth="2"
               fill="none"
               d={data}

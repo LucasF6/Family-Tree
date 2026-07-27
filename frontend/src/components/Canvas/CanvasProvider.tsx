@@ -2,6 +2,7 @@ import { Dimensions, Position } from "@/types/family-tree.types"
 import { createContext, useContext } from "react"
 
 export type CoordinatesContextValue = {
+  screenToWorldLength: (length: number) => number
   screenToWorld: (position: Position) => Position
   worldToScreen: (position: Position) => Position
 }

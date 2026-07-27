@@ -27,6 +27,9 @@ export default function Canvas({ children, overlay, keyboardShortcuts, disabled 
   const cameraRef = useRef<Camera>(camera)
 
   const coordinates: CoordinatesContextValue = {
+    screenToWorldLength(length: number): number {
+      return length / cameraRef.current.zoom
+    },
     screenToWorld(screenPosition: Position): Position {
       return {
         x: (screenPosition.x - cameraRef.current.panX) / cameraRef.current.zoom,
@@ -38,7 +41,7 @@ export default function Canvas({ children, overlay, keyboardShortcuts, disabled 
         x: cameraRef.current.panX + cameraRef.current.zoom * worldPosition.x,
         y: cameraRef.current.panY + cameraRef.current.zoom * worldPosition.y
       }
-    }
+    },
   }
 
   const mousePos: MousePositionContextValue = {

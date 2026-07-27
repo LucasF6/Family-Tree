@@ -1,7 +1,4 @@
 import {
-  EditorAction,
-  FamilyGraph,
-  PersonId,
   PersonSpatialData,
   Position,
   RelationshipData,
@@ -10,12 +7,6 @@ import {
 import { RelationshipPath } from "."
 import { useCoordinates } from "@/components/Canvas/CanvasProvider"
 import { useEditorState, useEditorStateDispatch } from "../FamilyTree/EditorStateProvider"
-
-type RelationshipsProps = {
-  graph: FamilyGraph
-  disabled: boolean
-  dispatch: (action: Extract<EditorAction, { type: "BEGAN_ADDING_PERSON_FROM_RELATIONSHIP" }>) => void
-}
 
 export function Relationships() {
   const editorState = useEditorState()
