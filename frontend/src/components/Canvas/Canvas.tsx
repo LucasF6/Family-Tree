@@ -2,6 +2,7 @@ import { Dimensions, Position } from "@/types/family-tree.types";
 import { PointerEvent, useRef, useEffect, useState, WheelEvent } from "react";
 import { CanvasProvider, CoordinatesContext, CoordinatesContextValue, MousePositionContextValue, ViewportContext } from "./CanvasProvider";
 import KeyboardShortcuts from "../KeyboardShortcuts";
+import { useEditorState, useEditorStateDispatch } from "../FamilyTree";
 
 type Camera = {
   panX: number,
@@ -19,6 +20,8 @@ type CanvasProps = {
 const zoomFactor: number = 0.001
 
 export default function Canvas({ children, overlay, keyboardShortcuts, disabled }: CanvasProps) {
+  const { mode } = useEditorState()
+  const dispatch = useEditorStateDispatch()
   const invariantPosition = useRef<Position | null>(null) // The user is dragging the canvas if this is non-null
   const canvasRef = useRef<HTMLDivElement>(null)
   const [viewport, setViewport] = useState<Dimensions | null>(null)
@@ -69,6 +72,9 @@ export default function Canvas({ children, overlay, keyboardShortcuts, disabled 
 
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
     if (!disabled && e.button === 0) {
+      if (mode.type === "options") {
+        dispatch({ type: "CANCELED" })
+      }
       e.currentTarget.setPointerCapture(e.pointerId)
       invariantPosition.current = coordinates.screenToWorld({
         x: e.clientX,
@@ -111,6 +117,10 @@ export default function Canvas({ children, overlay, keyboardShortcuts, disabled 
       }
     })
   }
+
+  function handleContextMenu(e: PointerEvent<HTMLDivElement>) {
+    e.preventDefault()
+  }
   
   return (
     <CanvasProvider
@@ -124,10 +134,11 @@ export default function Canvas({ children, overlay, keyboardShortcuts, disabled 
         onPointerUp={handlePointerUp}
         onPointerMove={handlePointerMove}
         onWheel={handleWheel}
+        onContextMenu={handleContextMenu}
         ref={canvasRef}
       >
         <div
-          className="w-full h-full"
+          className="w-full h-full "
           style={{
             transformOrigin: `0 0`,
             transform: `translate(${camera.panX}px, ${camera.panY}px) scale(${camera.zoom})`

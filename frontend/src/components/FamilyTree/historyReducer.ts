@@ -21,6 +21,7 @@ export function historyReducer(state: EditorHistory, action: EditorAction): Edit
     case "CONNECTED_EXISTING_PERSON":
     case "NAMED_NEW_PERSON":
     case "CHANGED_RELATIONSHIP_STRENGTH":
+    case "DELETED_PERSON":
       return createNextHistory(state, next)
     case "BEGAN_CONNECTING_EXISTING_PERSON":
       if (next.mode.type !== "choosing-connection") {

@@ -71,7 +71,7 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
   } else if (mode === "draggable" && isDragging) {
     colors = "bg-gray-600 cursor-grabbing"
   } else { // disabled
-    colors = "bg-gray-300 cursor-default";
+    colors = "bg-gray-300 cursor-default pointer-events-none";
   }
 
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
@@ -174,9 +174,9 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
     }
   }
 
-  function handleContextMenu(e: MouseEvent<HTMLDivElement>) {
-    e.preventDefault()
-  }
+  // function handleContextMenu(e: MouseEvent<HTMLDivElement>) {
+  //   e.preventDefault()
+  // }
 
   function handleLostPointerCapture() {
     if (state.current.type === "none") {
@@ -203,7 +203,7 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
         onPointerMove={handlePointerMove}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        onContextMenu={handleContextMenu}
+        // onContextMenu={handleContextMenu}
         onLostPointerCapture={handleLostPointerCapture}
         ref={cardRef}
       >

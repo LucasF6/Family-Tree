@@ -17,8 +17,8 @@ export default function FamilyTree() {
         keyboardShortcuts={<KeyboardShortcuts />}
       >
         <Relationships />
-        <OptionsBubble />
         <PeopleWithDraft />
+        <OptionsBubble />
       </Canvas>
     </EditorStateProvider>
   );

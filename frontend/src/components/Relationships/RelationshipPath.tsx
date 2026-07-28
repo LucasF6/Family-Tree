@@ -91,7 +91,7 @@ export function RelationshipPath({ data, onClick, disabled, dotted = false }: Re
 
   return (
     <svg
-      className="absolute inset-0 overflow-visible"
+      className="absolute inset-0 overflow-visible pointer-events-none"
     >
       <g 
         className="group" 
@@ -107,14 +107,16 @@ export function RelationshipPath({ data, onClick, disabled, dotted = false }: Re
                 !disabled && "group-hover:stroke-green-400",
                 dotted && styles.dottedPath
               )}
+            pointerEvents="stroke"
               pathLength="1"
               strokeWidth="2"
               fill="none"
               d={data}
-            />
+              />
             <path
               className="stroke-transparent"
               strokeWidth="16"
+              pointerEvents="stroke"
               fill="none"
               d={data}
             />

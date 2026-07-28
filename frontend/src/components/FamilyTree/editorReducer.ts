@@ -251,6 +251,23 @@ export default function editorReducer(draft: EditorState, action: EditorAction):
     case "CHANGED_RELATIONSHIP_STRENGTH":
       draft.graph.relationshipsById[action.relationshipId].strength = action.strength
       break
+    case "DELETED_PERSON": {
+      draft.graph.relationshipIds = draft.graph.relationshipIds.filter(relId => {
+        const { children } = draft.graph.relationshipsById[relId]
+
+        if (children.includes(action.personId)) {
+          draft.graph.relationshipsById[relId].children = children.filter(childId => childId !== action.personId)
+          return true
+        } else {
+          delete draft.graph.relationshipsById[relId]
+          return false
+        }
+      })
+      draft.graph.peopleIds = draft.graph.peopleIds.filter(id => id !== action.personId)
+      delete draft.graph.peopleById[action.personId]
+      draft.mode = { type: "viewing" }
+      break
+    }
   }
   
 }

@@ -187,6 +187,10 @@ export type EditorAction =
       strength: number
     }
   | {
+      type: "DELETED_PERSON"
+      personId: PersonId
+    }
+  | {
       type: "UNDO"
     }
   | {

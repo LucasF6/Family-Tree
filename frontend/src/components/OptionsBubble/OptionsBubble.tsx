@@ -5,11 +5,16 @@ import styles from "./OptionsBubble.module.css"
 import { useEditorState, useEditorStateDispatch } from "../FamilyTree";
 import { useCoordinates, useMousePosition } from "../Canvas/CanvasProvider";
 
+/**
+ * This component provides the options to
+ * 
+ * 1. Go to the person's page
+ * 2. Edit the person in the canvas
+ * 2. Delete the person
+ */
 export default function OptionsBubble() {
   const editorState = useEditorState()
   const dispatch = useEditorStateDispatch()
-  const mousePosition = useMousePosition()
-  const coordinates = useCoordinates()
 
   if (editorState.mode.type !== "options") {
     return
@@ -17,11 +22,10 @@ export default function OptionsBubble() {
 
   const person = editorState.graph.peopleById[editorState.mode.personWithOptions]
   
-  function handleClickConnect(personId : PersonId) {
+  function handleDelete(personId: PersonId) {
     dispatch({
-      type: "BEGAN_ADDING_PERSON_FROM_PERSON",
-      personId,
-      startPosition: coordinates.screenToWorld(mousePosition.get())
+      type: "DELETED_PERSON",
+      personId 
     })
   }
 
@@ -29,30 +33,28 @@ export default function OptionsBubble() {
     <div 
       className={styles['options-bubble']}
       style={{
-        "--x": `${person.position.x}px`,
+        "--x": `${person.position.x + person.width / 2}px`,
         "--y": `${person.position.y}px`,
       } as React.CSSProperties}
       onPointerDown={e => e.stopPropagation()}
     >
-      <div className="grid grid-cols-2">
-        <button 
-          className="bg-amber-400 hover:cursor-pointer hover:bg-amber-500 text-4xl font-mono"
-          onClick={() => {}}
-        >
-          Edit
-        </button>
-        <button 
-          className="bg-blue-400 hover:cursor-pointer hover:bg-blue-500 text-4xl font-mono"
-          onClick={() => {}}
-        >
-          Page
-        </button>
-      </div>
       <button 
-        className="bg-green-400 hover:cursor-pointer hover:bg-green-500 text-4xl font-mono"
-        onClick={() => handleClickConnect(person.id)}
+        className="bg-blue-400 hover:cursor-pointer hover:bg-blue-500 text-xl font-mono h-5.75"
+        onClick={() => {}}
       >
-        Connect
+        Page
+      </button>
+      <button 
+        className="bg-green-400 hover:cursor-pointer hover:bg-green-500 text-xl font-mono h-5.75"
+        onClick={() => {}}
+      >
+        Edit
+      </button>
+      <button 
+        className="bg-red-400 hover:cursor-pointer hover:bg-red-500 text-xl font-mono h-5.75"
+        onClick={() => handleDelete(person.id)}
+      >
+        Delete
       </button>
     </div>
   )
