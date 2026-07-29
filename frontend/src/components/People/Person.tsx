@@ -75,7 +75,7 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
   }
 
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
-    if (mode === "draggable" && e.button === 0) {
+    if (mode === "draggable" && state.current.type === "none" && e.button === 0) {
       const mouseWorldPosition = coordinates.screenToWorld({
         x: e.clientX,
         y: e.clientY
@@ -90,7 +90,7 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
         pointerId: e.pointerId
       }
       e.currentTarget.setPointerCapture(e.pointerId)
-    } else if (mode === "draggable" && e.button === 2) {
+    } else if (mode === "draggable" && state.current.type === "none" && e.button === 2) {
       dispatch({
         type: "OPTIONS_OPENED",
         person: id
@@ -174,18 +174,14 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
     }
   }
 
-  // function handleContextMenu(e: MouseEvent<HTMLDivElement>) {
-  //   e.preventDefault()
-  // }
-
-  function handleLostPointerCapture() {
+  function handleLostPointerCapture(e: PointerEvent<HTMLDivElement>) {
     if (state.current.type === "none") {
       return
+    } else if (state.current.type === "dragging") {
+      // console.log("added ya back ya pointa captcha mate")
+      console.log(e.pointerId)
+      e.currentTarget.setPointerCapture(e.pointerId)
     }
-    dispatch({
-      type: "CANCELED"
-    })
-    state.current = { type: "none" }
   }
 
   return (
@@ -203,7 +199,7 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
         onPointerMove={handlePointerMove}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        // onContextMenu={handleContextMenu}
+        // ={handlePointerCancel}
         onLostPointerCapture={handleLostPointerCapture}
         ref={cardRef}
       >

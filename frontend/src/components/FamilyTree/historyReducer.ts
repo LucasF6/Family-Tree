@@ -2,10 +2,20 @@ import { EditorAction, EditorHistory, EditorState } from "@/types/family-tree.ty
 import editorReducer from "./editorReducer";
 import { produce } from "immer";
 
+/** Deletes future snapshots if present and adds a new snapshot */
 function createNextHistory(state: EditorHistory, nextEditorState: EditorState): EditorHistory {
   return {
     history: [nextEditorState.graph, ...state.history.slice(state.present)],
     present: 0,
+    mode: nextEditorState.mode
+  }
+}
+
+/** Modifies graph without creating new snapshot or deleting future snapshots */
+function updateState(state: EditorHistory, nextEditorState: EditorState): EditorHistory {
+  return {
+    history: [...state.history.slice(0, state.present), nextEditorState.graph, ...state.history.slice(state.present + 1)],
+    present: state.present,
     mode: nextEditorState.mode
   }
 }
@@ -15,6 +25,7 @@ export function historyReducer(state: EditorHistory, action: EditorAction): Edit
     graph: state.history[state.present],
     mode: state.mode
   }
+  console.log(action.type)
   const next: EditorState = produce(snapshot, draft => editorReducer(draft, action))
   switch (action.type) {
     case "FINISHED_DRAGGING_PERSON":
@@ -32,6 +43,8 @@ export function historyReducer(state: EditorHistory, action: EditorAction): Edit
           mode: next.mode
         }
       }
+    case "BEGAN_DRAGGING_PERSON":
+      return updateState(state, next)
     case "UNDO":
       return {
         history: state.history,
