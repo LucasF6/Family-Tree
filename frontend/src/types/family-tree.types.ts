@@ -86,6 +86,12 @@ export type NewRelationshipSourceWithConnection =
   | { kind: "person", personId: PersonId, connection: Connection }
   | { kind: "relationship", relationshipId: RelationshipId}
 
+export type RelationshipLookup = {
+  partnersById: Record<PersonId, Set<PersonId>>
+  parentsById: Record<PersonId, Set<PersonId>>
+  childrenById: Record<PersonId, Set<PersonId>>
+}
+
 export type EditorState = {
   graph: FamilyGraph
   mode: EditorMode

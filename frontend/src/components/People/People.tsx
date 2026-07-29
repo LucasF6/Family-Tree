@@ -1,9 +1,11 @@
 'use client'
 
-import { PersonId, PersonData, EditorState, EditorAction, Position, PersonMode, add, RelationshipId, Relationship } from "@/types/family-tree.types"
+import { PersonId, PersonData, EditorState, EditorAction, Position, PersonMode, add, RelationshipId, Relationship, RelationshipLookup } from "@/types/family-tree.types"
 import { Person } from "./Person"
 import { useEffect, useRef } from "react"
 import { useEditorState, useEditorStateDispatch } from "../FamilyTree"
+import { getUnconnectablePeople } from "./getConnectablePeople"
+import { getRelationshipLookup } from "./getRelationshipLookup"
 
 function createModeById(mode: (id: PersonId) => PersonMode, ids: PersonId[]): Record<PersonId, PersonMode> {
   return Object.fromEntries(ids.map(id => [id, mode(id)]))
@@ -22,6 +24,8 @@ export default function People() {
   const { peopleIds: ids, peopleById: dataById, relationshipIds, relationshipsById } = editorState.graph
   const mode = editorState.mode
 
+  const lookup: RelationshipLookup = getRelationshipLookup(editorState.graph)
+
   let modeById: Record<PersonId, PersonMode>
   switch (mode.type) {
     case "viewing":
@@ -31,57 +35,61 @@ export default function People() {
       modeById = createModeById(id => mode.personDragging === id ? "draggable" : "disabled", ids)
       break
     case "connecting":
-      switch (mode.source.kind) {
-        case "none":
-          modeById = createUniformModeById("disabled", ids)
-          break
-        case "relationship":
-          const sourceId = mode.source.relationshipId
-          const sourceRelationship: Relationship = relationshipsById[sourceId]
-          const impossibleNewChildren: Set<PersonId> = new Set()
-          relationshipIds.forEach(id => {
-            const relationship: Relationship = relationshipsById[id]
-            if (sourceRelationship.parents.length === 2 || relationship.parents.length === 2 || relationship.parents[0] === sourceRelationship.parents[0]) {
-              relationship.children.forEach(child => impossibleNewChildren.add(child))
-            }
-          })
-          modeById = createModeById(id => (sourceRelationship.parents.includes(id) || impossibleNewChildren.has(id)) ? "disabled" : "connectable", ids)
-          break
-        case "person":
-          const fromId = mode.source.personId
-          const people: Record<PersonId, { isPartner: boolean, isParent: boolean, isChild: boolean }> =
-            Object.fromEntries(ids.map(id => [id, { isPartner: false, isParent: false, isChild: false }]))
-          let hasTwoParents: boolean = false
-          relationshipIds.forEach(id => {
-            const relationship: Relationship = relationshipsById[id]
-            if (relationship.parents.includes(fromId)) {
-              relationship.children.forEach(id => people[id].isChild = true)
-            if (relationship.parents.length === 2) {
-                const partnerId = relationship.parents[0] === fromId ? relationship.parents[1] : relationship.parents[0]
-                people[partnerId].isPartner = true 
-              }
-            }
-            if (relationship.children.includes(fromId)) {
-              relationship.parents.forEach(id => people[id].isParent = true)
-              if (relationship.parents.length === 2) {
-                hasTwoParents = true
-              }
-            }
-          })
-          modeById = createModeById(id => {
-            if (id === fromId) {
-              return "disabled"
-            }
-            const person = people[id]
-            if (hasTwoParents) {
-              return person.isPartner && person.isParent ? "disabled" : "connectable"
-            } else {
-              return person.isPartner && (person.isChild || person.isParent) ? "disabled" : "connectable"
-            }
-          }, ids)
-          break
-      }
+      const unconnectablePeople: Set<PersonId> = getUnconnectablePeople(editorState.graph, mode.source, lookup)
+      modeById = createModeById(id => unconnectablePeople.has(id) ? "disabled" : "connectable", ids)
       break
+
+      // switch (mode.source.kind) {
+      //   case "none":
+      //     modeById = createUniformModeById("disabled", ids)
+      //     break
+      //   case "relationship":
+      //     const sourceId = mode.source.relationshipId
+      //     const sourceRelationship: Relationship = relationshipsById[sourceId]
+      //     const impossibleNewChildren: Set<PersonId> = new Set()
+      //     relationshipIds.forEach(id => {
+      //       const relationship: Relationship = relationshipsById[id]
+      //       if (sourceRelationship.parents.length === 2 || relationship.parents.length === 2 || relationship.parents[0] === sourceRelationship.parents[0]) {
+      //         relationship.children.forEach(child => impossibleNewChildren.add(child))
+      //       }
+      //     })
+      //     modeById = createModeById(id => (sourceRelationship.parents.includes(id) || impossibleNewChildren.has(id)) ? "disabled" : "connectable", ids)
+      //     break
+      //   case "person":
+      //     const fromId = mode.source.personId
+      //     const people: Record<PersonId, { isPartner: boolean, isParent: boolean, isChild: boolean }> =
+      //       Object.fromEntries(ids.map(id => [id, { isPartner: false, isParent: false, isChild: false }]))
+      //     let hasTwoParents: boolean = false
+      //     relationshipIds.forEach(id => {
+      //       const relationship: Relationship = relationshipsById[id]
+      //       if (relationship.parents.includes(fromId)) {
+      //         relationship.children.forEach(id => people[id].isChild = true)
+      //       if (relationship.parents.length === 2) {
+      //           const partnerId = relationship.parents[0] === fromId ? relationship.parents[1] : relationship.parents[0]
+      //           people[partnerId].isPartner = true 
+      //         }
+      //       }
+      //       if (relationship.children.includes(fromId)) {
+      //         relationship.parents.forEach(id => people[id].isParent = true)
+      //         if (relationship.parents.length === 2) {
+      //           hasTwoParents = true
+      //         }
+      //       }
+      //     })
+      //     modeById = createModeById(id => {
+      //       if (id === fromId) {
+      //         return "disabled"
+      //       }
+      //       const person = people[id]
+      //       if (hasTwoParents) {
+      //         return person.isPartner && person.isParent ? "disabled" : "connectable"
+      //       } else {
+      //         return person.isPartner && (person.isChild || person.isParent) ? "disabled" : "connectable"
+      //       }
+      //     }, ids)
+      //     break
+      // }
+      // break
     default: 
       modeById = createUniformModeById("disabled", ids)
   }
