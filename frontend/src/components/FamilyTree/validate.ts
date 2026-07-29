@@ -16,7 +16,7 @@ function isValidParentCount(value: number): boolean {
  * 5. Each element of `graph.relationshipsById[id].parents` and `graph.relationshipsById[id].children` are in graph.peopleIds
  * 6. If `graph.relationshipsById[id].parents` has length 1, `graph.relationshipsById[id].children` is nonempty
  * 7. The collection of `graph.relationshipsById[id].children` where `id` is in `graph.relationshipIds` is pairwise disjoint
- * 8. The collection of `graph.relationshipsById[id].parents` where `id` is in `graph.relationshipIds` has no repeats
+ * 8. The collection of `graph.relationshipsById[id].parents` of length 2 where `id` is in `graph.relationshipIds` has no repeats
  * 9. The directed graph pointing parents to children is acyclic
  * 
  * TODO: add that there can be no cycles, add no repetitions of parent combinations
@@ -75,9 +75,7 @@ export function validate(graph: FamilyGraph): boolean {
       }
     }
     // Rule 8
-    if (parents.length === 1 && partnersById[parents[0]].has(parents[0])) {
-      return false
-    } else if (parents.length === 1) {
+    if (parents.length === 1) {
       partnersById[parents[0]].add(parents[0]) 
       children.forEach(child => { // Building childrenById and parentsById for rule 9
         parentsById[child].add(parents[0])

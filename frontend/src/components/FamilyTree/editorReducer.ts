@@ -210,34 +210,49 @@ export default function editorReducer(draft: EditorState, action: EditorAction):
       if (draft.mode.type !== "choosing-connection") {
         throw new Error("can only choose connection in choosing-connection mode!")
       }
-      const fromId: PersonId = draft.mode.source.personId
-      const toId: PersonId = draft.mode.person
+      const { relationshipIds, relationshipsById } = draft.graph
+      const from: PersonId = draft.mode.source.personId
+      const to: PersonId = draft.mode.person
 
-      let relationshipId: RelationshipId | undefined
-      let parent: PersonId | undefined
-      let child: PersonId | undefined
-      if (action.connection === "parent" && (relationshipId = draft.graph.relationshipIds.find(id => draft.graph.relationshipsById[id].children.includes(fromId)))) {
-        parent = toId
-        child = fromId
-      } else if (action.connection === "child" && (relationshipId = draft.graph.relationshipIds.find(id => draft.graph.relationshipsById[id].children.includes(toId)))) {
-        parent = fromId
-        child = toId
+      if (action.connection === "partner") {
+        createDirectRelationship(draft, "partner", from, to)
+        draft.mode = { type: "viewing" }
+        break
       }
-      if (relationshipId && parent && child) {
-        const relationship: Relationship = draft.graph.relationshipsById[relationshipId]
-        if (relationship.parents.length === 2) {
-          throw new Error("should not be able to connect child with two parents already to new parent")
-        }
-        const otherParent: PersonId = relationship.parents[0]
-        draft.graph.relationshipIds = draft.graph.relationshipIds.filter(id => id !== relationshipId)
-        delete draft.graph.relationshipsById[relationshipId]
-        createRelationship(draft, id => ({
-          id,
-          parents: [parent, otherParent],
-          children: [child]
-        }))
+      let child: PersonId
+      let parent: PersonId
+      if (action.connection === "parent") {
+        child = from
+        parent = to
       } else {
-        createDirectRelationship(draft, action.connection, fromId, toId)
+        child = to
+        parent = from
+      }
+      // Relationship with the child as a child if it exists
+      const childRelId: RelationshipId | undefined = relationshipIds.find(id => relationshipsById[id].children.includes(child))
+      if (childRelId) {
+        const childRel: Relationship = relationshipsById[childRelId]
+        if (childRel.parents.length === 2) {
+          throw new Error("Cannot create person with more than two parents")
+        }
+        const initialParent: PersonId = childRel.parents[0]
+        let relId: RelationshipId | undefined
+        if (relId = relationshipIds.find(id => {
+          const relationship = relationshipsById[id]
+          return relationship.parents.includes(initialParent) && relationship.parents.includes(parent)
+        })) {
+          relationshipsById[relId].children.push(child)
+        } else {
+          createRelationship(draft, id => ({
+            id,
+            parents: [initialParent, parent],
+            children: [child]
+          }))
+        }
+        draft.graph.relationshipIds = relationshipIds.filter(id => id !== childRelId)
+        delete draft.graph.relationshipsById[childRelId]
+      } else {
+        createDirectRelationship(draft, "parent", child, parent)
       }
       draft.mode = { type: "viewing" }
       break
@@ -275,5 +290,4 @@ export default function editorReducer(draft: EditorState, action: EditorAction):
       break
     }
   }
-  
 }

@@ -1,11 +1,11 @@
-import { EditorAction, EditorHistory, EditorState, FamilyGraph } from "@/types/family-tree.types"
-import { createContext, Dispatch, useContext, useReducer } from "react"
-import { useImmerReducer } from "use-immer"
-import familyTreeReducer from "./editorReducer"
+import { EditorAction, EditorHistory, EditorState, FamilyGraph, RelationshipIndex } from "@/types/family-tree.types"
+import { createContext, Dispatch, useContext, useMemo, useReducer } from "react"
 import { historyReducer } from "./historyReducer"
+import { getRelationshipIndex } from "./getRelationshipIndex"
 
-export const EditorStateContext = createContext<EditorState | null>(null)
-export const EditorStateDispatchContext = createContext<Dispatch<EditorAction> | null>(null)
+const EditorStateContext = createContext<EditorState | null>(null)
+const EditorStateDispatchContext = createContext<Dispatch<EditorAction> | null>(null)
+const RelationshipIndexContext = createContext<RelationshipIndex | null>(null)
 
 export function useEditorState() {
   const editorState = useContext(EditorStateContext)
@@ -23,6 +23,14 @@ export function useEditorStateDispatch() {
   return dispatch
 }
 
+export function useRelationshipIndex() {
+  const relationshipIndex = useContext(RelationshipIndexContext)
+  if (relationshipIndex === null) {
+    throw new Error("You can only use relationship index context inside editor state provider!")
+  }
+  return relationshipIndex
+}
+
 const defaultState: EditorHistory = {
   history: [
     {
@@ -37,7 +45,6 @@ const defaultState: EditorHistory = {
 }
 
 export function EditorStateProvider({ children }: { children: React.ReactNode }) {
-  // const [editorState, dispatch] = useImmerReducer<EditorState, EditorAction>(familyTreeReducer, defaultState)
   const [editorHistory, dispatch] = useReducer<EditorHistory, [EditorAction]>(historyReducer, defaultState)
 
   const editorState = {
@@ -45,10 +52,14 @@ export function EditorStateProvider({ children }: { children: React.ReactNode })
     mode: editorHistory.mode
   }
 
+  const relationshipIndex = useMemo(() => getRelationshipIndex(editorState.graph), [editorState.graph])
+
   return (
     <EditorStateContext value={editorState}>
       <EditorStateDispatchContext value={dispatch}>
-        {children}
+        <RelationshipIndexContext value={relationshipIndex}>
+          {children}
+        </RelationshipIndexContext>
       </EditorStateDispatchContext>
     </EditorStateContext>
   )

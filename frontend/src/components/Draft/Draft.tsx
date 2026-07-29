@@ -4,6 +4,8 @@ import { Connection, DraftMode, EditorAction, EditorMode, FamilyGraph, NewRelati
 import { PersonDraft } from "./PersonDraft"
 import { useState } from "react"
 import { RelationshipDraft } from "./RelationshipDraft"
+import { getConnections } from "./getConnections"
+import { useRelationshipIndex } from "../FamilyTree"
 
 type DraftProps = {
   graph: FamilyGraph
@@ -15,7 +17,8 @@ export default function Draft({ graph, mode, dispatch }: DraftProps) {
   const [connection, setConnection] = useState<Connection | null>(null)
   const [newPersonWidth, setNewPersonWidth] = useState(80)
   const [newPersonPosition, setNewPersonPosition] = useState<Position>(mode.type === "choosing-connection" ? { x: 0, y: 0 } : mode.newPersonPosition)
-  
+  const index = useRelationshipIndex()
+
   const source: NewRelationshipSource = mode.source
 
   let newPersonData: PersonSpatialData
@@ -42,49 +45,10 @@ export default function Draft({ graph, mode, dispatch }: DraftProps) {
       includeConnections = ["parent", "partner", "child"]
     }
   } else if (mode.type === "choosing-connection" && source.kind === "person") {
-    /**
-     * I need to know:
-     * 1. does the "to person" have two parents? If yes they can't be the child of the "from person"
-     * 2. is the "to person" the "from person"'s partner? If yes they can't be a new partner
-     * 3. is the "to person" the "from person"'s child? If yes they can't be the parent or child
-     * 4. is the "to person" the "from person"'s parent? If yes they can't be the parent or child
-    */
-   const fromId: PersonId = source.personId
-   const toId: PersonId = mode.person
-   // These variables are named respective to the "to person"
-   let hasTwoParents: boolean = false
-   let isPartner: boolean = false
-   let isParent: boolean = false
-   let isChild: boolean = false
-   graph.relationshipIds.forEach(id => {
-     const relationship = graph.relationshipsById[id]
-     if (relationship.children.includes(toId)) {
-       if (relationship.parents.length === 2) {
-         hasTwoParents = true
-        }
-        if (relationship.parents.includes(fromId)) {
-          isChild = true
-        }
-      }
-      if (relationship.parents.includes(toId)) {
-        if (relationship.children.includes(fromId)) {
-          isParent = true
-        }
-        if (relationship.parents.includes(fromId)) {
-          isPartner = true
-        }
-      }
-    })
-    if (hasTwoParents) {
-      initialConnection = "partner"
-      includeConnections = ["parent", "partner"]
-    } else if (isPartner) {
-      initialConnection = "child"
-      includeConnections = ["parent", "child"]
-    } else {
-      initialConnection = "partner"
-      includeConnections = ["parent", "partner", "child"]
-    }
+    const fromId: PersonId = source.personId
+    const toId: PersonId = mode.person
+    includeConnections = getConnections(fromId, toId, index)
+    initialConnection = includeConnections.includes("partner") ? "partner" : includeConnections[0]
   }
   
   let sourceWithConnection: NewRelationshipSourceWithConnection

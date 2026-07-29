@@ -1,2 +1,2 @@
 export { default } from "./FamilyTree"
-export { useEditorState, useEditorStateDispatch } from "./EditorStateProvider"
+export { useEditorState, useEditorStateDispatch, useRelationshipIndex } from "./EditorStateProvider"
