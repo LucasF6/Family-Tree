@@ -1,11 +1,11 @@
 'use client'
 
-import { PersonId, PersonData, EditorState, EditorAction, Position, PersonMode, add, RelationshipId, Relationship, RelationshipLookup } from "@/types/family-tree.types"
+import { PersonId, PersonData, EditorState, EditorAction, Position, PersonMode, add, RelationshipId, Relationship, RelationshipIndex } from "@/types/family-tree.types"
 import { Person } from "./Person"
 import { useEffect, useRef } from "react"
 import { useEditorState, useEditorStateDispatch } from "../FamilyTree"
 import { getUnconnectablePeople } from "./getConnectablePeople"
-import { getRelationshipLookup } from "./getRelationshipLookup"
+import { getRelationshipIndex } from "./getRelationshipIndex"
 
 function createModeById(mode: (id: PersonId) => PersonMode, ids: PersonId[]): Record<PersonId, PersonMode> {
   return Object.fromEntries(ids.map(id => [id, mode(id)]))
@@ -24,7 +24,7 @@ export default function People() {
   const { peopleIds: ids, peopleById: dataById, relationshipIds, relationshipsById } = editorState.graph
   const mode = editorState.mode
 
-  const lookup: RelationshipLookup = getRelationshipLookup(editorState.graph)
+  const lookup: RelationshipIndex = getRelationshipIndex(editorState.graph)
 
   let modeById: Record<PersonId, PersonMode>
   switch (mode.type) {

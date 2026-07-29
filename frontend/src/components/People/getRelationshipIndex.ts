@@ -1,6 +1,6 @@
-import { FamilyGraph, PersonId, Relationship, RelationshipLookup } from "@/types/family-tree.types";
+import { FamilyGraph, PersonId, Relationship, RelationshipIndex } from "@/types/family-tree.types";
 
-export function getRelationshipLookup({ peopleIds, relationshipIds, relationshipsById }: FamilyGraph): RelationshipLookup {
+export function getRelationshipIndex({ peopleIds, relationshipIds, relationshipsById }: FamilyGraph): RelationshipIndex {
   const partnersById: Record<PersonId, Set<PersonId>> = {}
   const parentsById: Record<PersonId, Set<PersonId>> = {}
   const childrenById: Record<PersonId, Set<PersonId>> = {}

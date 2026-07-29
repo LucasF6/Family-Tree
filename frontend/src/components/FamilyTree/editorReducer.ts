@@ -253,14 +253,20 @@ export default function editorReducer(draft: EditorState, action: EditorAction):
       break
     case "DELETED_PERSON": {
       draft.graph.relationshipIds = draft.graph.relationshipIds.filter(relId => {
-        const { children } = draft.graph.relationshipsById[relId]
+        const { children, parents } = draft.graph.relationshipsById[relId]
 
         if (children.includes(action.personId)) {
+          if (parents.length === 1) {
+            delete draft.graph.relationshipsById[relId]
+            return false
+          }
           draft.graph.relationshipsById[relId].children = children.filter(childId => childId !== action.personId)
           return true
-        } else {
+        } else if (parents.includes(action.personId)) {
           delete draft.graph.relationshipsById[relId]
           return false
+        } else {
+          return true
         }
       })
       draft.graph.peopleIds = draft.graph.peopleIds.filter(id => id !== action.personId)

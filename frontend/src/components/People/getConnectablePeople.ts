@@ -4,41 +4,16 @@ import {
   PersonId,
   Relationship,
   RelationshipId,
-  RelationshipLookup,
+  RelationshipIndex,
 } from "@/types/family-tree.types"
-
-function getReachableSet(
-  people: Set<PersonId> | PersonId,
-  lookup: Record<PersonId, Set<PersonId>>,
-): Set<PersonId> {
-  const stack: PersonId[] = people instanceof Set ? [...people] : [people]
-  const visited: Set<PersonId> = new Set(stack)
-
-  let person: PersonId | undefined
-  while ((person = stack.pop())) {
-    for (const neighbor of lookup[person]) {
-      if (!visited.has(neighbor)) {
-        visited.add(neighbor)
-        stack.push(neighbor)
-      }
-    }
-  }
-
-  return visited
-}
+import { getFamilyLookup } from "./getFamilyLookup"
 
 export function getUnconnectablePeople(
   { peopleIds, relationshipsById, relationshipIds }: FamilyGraph,
   source: NewRelationshipSource,
-  lookup: RelationshipLookup,
+  index: RelationshipIndex,
 ) {
-  function getAncestry(people: Set<PersonId> | PersonId): Set<PersonId> {
-    return getReachableSet(people, lookup.parentsById)
-  }
-
-  function getDescendents(people: Set<PersonId> | PersonId): Set<PersonId> {
-    return getReachableSet(people, lookup.childrenById)
-  }
+  const { getAncestry, getDescendents } = getFamilyLookup(index)
 
   switch (source.kind) {
     case "relationship": {
@@ -98,14 +73,14 @@ export function getUnconnectablePeople(
       const ancestry: Set<PersonId> = getAncestry(sourceId)
       const descendents: Set<PersonId> = getDescendents(sourceId)
 
-      const parents = lookup.parentsById[sourceId]
-      const hasTwoParents: boolean = lookup.parentsById[sourceId].size === 2
-      for (let partner of lookup.partnersById[sourceId]) {
+      const parents = index.parentsById[sourceId]
+      const hasTwoParents: boolean = parents.size === 2
+      for (let partner of index.partnersById[sourceId]) {
+        const partnerParents = index.parentsById[partner]
+        const partnerHasTwoParents = partnerParents.size === 2
         if (
-          (ancestry.has(partner) && 
-            (hasTwoParents || parents.has(partner))) ||
-          (descendents.has(partner) && 
-            (lookup.parentsById[partner].size === 2 || lookup.parentsById[partner].has(sourceId)))
+          (hasTwoParents || descendents.has(partner) || parents.has(partner)) &&
+          (partnerHasTwoParents || ancestry.has(partner) || partnerParents.has(sourceId))
         ) {
           unconnectable.add(partner)
         }
