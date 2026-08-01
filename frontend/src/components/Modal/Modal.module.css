@@ -1,0 +1,8 @@
+.modal {
+  width: min(90vw, 600px);
+  max-height: 90vh;
+  min-height: 30vh;
+  overflow: auto;
+  margin: auto;
+  padding: 5px
+}

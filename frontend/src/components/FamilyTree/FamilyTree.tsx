@@ -7,6 +7,7 @@ import OptionsBubble from "@/components/OptionsBubble";
 import { EditorStateProvider } from "./EditorStateProvider";
 import { PeopleWithDraft } from "../PeopleWithDraft/PeopleWithDraft";
 import KeyboardShortcuts from "../KeyboardShortcuts";
+import { PersonModal } from "@/components/Modal";
 
 export default function FamilyTree() {
   return (
@@ -20,6 +21,7 @@ export default function FamilyTree() {
         <PeopleWithDraft />
         <OptionsBubble />
       </Canvas>
+      <PersonModal />
     </EditorStateProvider>
   );
 }

@@ -249,6 +249,19 @@ export default function editorReducer(draft: EditorState, action: EditorAction):
     case "CHANGED_RELATIONSHIP_STRENGTH":
       draft.graph.relationshipsById[action.relationshipId].strength = action.strength
       break
+    case "OPENED_PERSON_SETTINGS":
+      draft.mode = {
+        type: "person-settings",
+        person: action.personId
+      }
+      break
+    case "EDITED_PERSON":
+      if (draft.mode.type !== "person-settings") {
+        throw new Error("Must be in person settings mode to edit person!")
+      }
+      draft.graph.peopleById[draft.mode.person].name = action.name
+      draft.mode = { type: "viewing" }  
+      break
     case "DELETED_PERSON": {
       draft.graph.relationshipIds = draft.graph.relationshipIds.filter(relId => {
         const { children, parents } = draft.graph.relationshipsById[relId]

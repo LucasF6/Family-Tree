@@ -108,6 +108,10 @@ export type EditorMode =
       personDragging: PersonId
     }
   | {
+      type: "person-settings"
+      person: PersonId
+    }
+  | {
       type: "options"
       personWithOptions: PersonId
     }
@@ -191,6 +195,14 @@ export type EditorAction =
       type: "CHANGED_RELATIONSHIP_STRENGTH"
       relationshipId: RelationshipId
       strength: number
+    }
+  | {
+      type: "OPENED_PERSON_SETTINGS"
+      personId: PersonId
+    }
+  | {
+      type: "EDITED_PERSON"
+      name: string
     }
   | {
       type: "DELETED_PERSON"

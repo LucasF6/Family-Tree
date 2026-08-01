@@ -1,9 +1,8 @@
 'use client'
 
-import { PersonData, PersonId, Position } from "@/types/family-tree.types";
+import { PersonId } from "@/types/family-tree.types";
 import styles from "./OptionsBubble.module.css"
 import { useEditorState, useEditorStateDispatch } from "../FamilyTree";
-import { useCoordinates, useMousePosition } from "../Canvas/CanvasProvider";
 
 /**
  * This component provides the options to
@@ -21,6 +20,13 @@ export default function OptionsBubble() {
   }
 
   const person = editorState.graph.peopleById[editorState.mode.personWithOptions]
+
+  function handleEdit(personId: PersonId) {
+    dispatch({
+      type: "OPENED_PERSON_SETTINGS",
+      personId
+    })
+  }
   
   function handleDelete(personId: PersonId) {
     dispatch({
@@ -46,7 +52,7 @@ export default function OptionsBubble() {
       </button>
       <button 
         className="bg-green-400 hover:cursor-pointer hover:bg-green-500 text-xl font-mono h-5.75"
-        onClick={() => {}}
+        onClick={() => handleEdit(person.id)}
       >
         Edit
       </button>
