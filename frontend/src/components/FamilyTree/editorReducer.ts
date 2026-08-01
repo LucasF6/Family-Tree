@@ -3,6 +3,27 @@ import { v4 } from "uuid"
 import { getConnections } from "../Draft/getConnections"
 import { getRelationshipIndex } from "./getRelationshipIndex"
 
+let canvas: HTMLCanvasElement
+function getTextWidth(text: string, font: string): number {
+  // 1. Create or reuse an in-memory canvas element
+  if (!canvas) {
+    canvas = document.createElement("canvas")
+  } 
+  const context = canvas.getContext("2d");
+
+  if (context) {
+    // 2. Set the font styling exactly how it will appear in the CSS
+    context.font = font;
+    
+    // 3. Measure the text
+    const metrics = context.measureText(text);
+    return metrics.width;
+  } {
+    console.log("there was a problem")
+    return 0
+  }
+}
+
 function createRelationship(draft: EditorState, callback: (id: RelationshipId) => Relationship): RelationshipId {
   const id: RelationshipId = v4() as RelationshipId
   draft.graph.relationshipsById[id] = callback(id)
@@ -259,8 +280,10 @@ export default function editorReducer(draft: EditorState, action: EditorAction):
       if (draft.mode.type !== "person-settings") {
         throw new Error("Must be in person settings mode to edit person!")
       }
-      draft.graph.peopleById[draft.mode.person].name = action.name
-      draft.mode = { type: "viewing" }  
+      const person = draft.graph.peopleById[draft.mode.person]
+      person.name = action.name
+      person.width = getTextWidth(action.name, "16px Arial") + 40
+      draft.mode = { type: "viewing" }
       break
     case "DELETED_PERSON": {
       draft.graph.relationshipIds = draft.graph.relationshipIds.filter(relId => {

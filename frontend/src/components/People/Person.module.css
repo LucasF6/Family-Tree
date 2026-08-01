@@ -4,6 +4,8 @@
   position: absolute;
   width: fit-content;
   height: 60px;
+  font-size: 16px;
+  font-family: "Arial";
   padding: 20px;
   border-radius: 15px;
   user-select: none;
