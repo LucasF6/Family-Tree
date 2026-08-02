@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, MouseEvent } from "react"
 import { PointerEvent } from "react"
 import styles from "./Person.module.css"
-import { PersonId, PersonMode, PersonSpatialData, Position } from "@/types/family-tree.types";
+import { PersonData, PersonId, PersonMode, PersonSpatialData, Position } from "@/types/family-tree.types";
 import { useEditorState, useEditorStateDispatch } from "../FamilyTree";
 import { useCoordinates, useMousePosition } from "../Canvas/CanvasProvider";
 import { DragPreview } from "./DragPreview";
@@ -29,7 +29,7 @@ type PersonState =
 type PersonProps = {
   name: string;
   id: PersonId
-  data: PersonSpatialData
+  data: PersonData
   mode: PersonMode
   onMouseEnter: (id: PersonId) => void;
   onMouseLeave: (id: PersonId) => void
@@ -39,7 +39,7 @@ function withinDragThreshold(positionX: number, positionY: number, clientX: numb
   return Math.abs(positionX - clientX) < DRAG_THRESHOLD && Math.abs(positionY - clientY) < DRAG_THRESHOLD
 }
 
-export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: PersonProps) {
+export function Person({ mode, data, onMouseEnter, onMouseLeave }: PersonProps) {
   const { mode: editorMode } = useEditorState()
   const dispatch = useEditorStateDispatch()
   const coordinates = useCoordinates()
@@ -93,12 +93,12 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
     } else if (mode === "draggable" && state.current.type === "none" && e.button === 2) {
       dispatch({
         type: "OPTIONS_OPENED",
-        person: id
+        person: data.id
       })
     } else if (mode === "connectable" && e.button === 0) {
       dispatch({
         type: "BEGAN_CONNECTING_EXISTING_PERSON",
-        person: id
+        person: data.id
       })
     }
     e.stopPropagation()
@@ -115,7 +115,7 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
           x: e.clientX,
           y: e.clientY
         }),
-        personId: id
+        personId: data.id
       })
     } else if (state.current.type === "dragging") {      
       setPreviewDragPosition(null)
@@ -129,7 +129,7 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
           x: mouseWorldPosition.x + state.current.offset.x,
           y: mouseWorldPosition.y + state.current.offset.y
         },
-        person: id
+        person: data.id
       })
     }
     state.current = { type: "none" }
@@ -150,7 +150,7 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
         setPreviewDragPosition(position)
         dispatch({
           type: "BEGAN_DRAGGING_PERSON",
-          person: id
+          person: data.id
         })
       }
     } else if (state.current.type === "dragging" && mode === "draggable") {
@@ -164,13 +164,13 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
 
   function handleMouseEnter() {
     if (mode === "connectable") {
-      onMouseEnter(id)
+      onMouseEnter(data.id)
     }
   }
 
   function handleMouseLeave() {
     if (mode === "connectable") {
-      onMouseLeave(id)
+      onMouseLeave(data.id)
     }
   }
 
@@ -178,19 +178,18 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
     if (state.current.type === "none") {
       return
     } else if (state.current.type === "dragging") {
-      // console.log("added ya back ya pointa captcha mate")
-      console.log(e.pointerId)
       e.currentTarget.setPointerCapture(e.pointerId)
     }
   }
 
   return (
     <>
-      {isDragging && <DragPreview personId={id} personData={data} previewPosition={previewDragPosition}/>}
+      {isDragging && <DragPreview personId={data.id} personData={data} previewPosition={previewDragPosition}/>}
       <div 
         className={`
           ${styles.person}
-          ${colors}`}
+          ${colors}
+        `}
         style={{
           transform: `translate(${computedPosition.x}px, ${computedPosition.y}px) translate(-50%, -50%)`,
         }}
@@ -199,11 +198,11 @@ export function Person({ id, name, mode, data, onMouseEnter, onMouseLeave }: Per
         onPointerMove={handlePointerMove}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        // ={handlePointerCancel}
         onLostPointerCapture={handleLostPointerCapture}
         ref={cardRef}
       >
-        {name}
+        {data.imageURL && <img src={data.imageURL} className="w-15 h-15 rounded-full"/>}
+        {data.name}
       </div>
     </>
   )

@@ -34,7 +34,8 @@ export type PersonData = PersonSpatialData & {
   id: PersonId
   name: string
   age?: number
-  picture?: string
+  imageURL?: string
+  imageFile?: File
   bio?: string
 }
 
@@ -202,7 +203,11 @@ export type EditorAction =
     }
   | {
       type: "EDITED_PERSON"
-      name: string
+      name?: string
+      image?: {
+        url: string
+        file: File
+      }
     }
   | {
       type: "DELETED_PERSON"

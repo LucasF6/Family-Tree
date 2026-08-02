@@ -3,25 +3,14 @@ import { v4 } from "uuid"
 import { getConnections } from "../Draft/getConnections"
 import { getRelationshipIndex } from "./getRelationshipIndex"
 
+const padding  = 20
 let canvas: HTMLCanvasElement
+let context: CanvasRenderingContext2D
 function getTextWidth(text: string, font: string): number {
-  // 1. Create or reuse an in-memory canvas element
-  if (!canvas) {
-    canvas = document.createElement("canvas")
-  } 
-  const context = canvas.getContext("2d");
-
-  if (context) {
-    // 2. Set the font styling exactly how it will appear in the CSS
-    context.font = font;
-    
-    // 3. Measure the text
-    const metrics = context.measureText(text);
-    return metrics.width;
-  } {
-    console.log("there was a problem")
-    return 0
-  }
+  canvas = canvas ?? document.createElement("canvas")
+  context = context ?? canvas.getContext("2d")!
+  context.font = font
+  return context.measureText(text).width + padding * 2;
 }
 
 function createRelationship(draft: EditorState, callback: (id: RelationshipId) => Relationship): RelationshipId {
@@ -281,8 +270,15 @@ export default function editorReducer(draft: EditorState, action: EditorAction):
         throw new Error("Must be in person settings mode to edit person!")
       }
       const person = draft.graph.peopleById[draft.mode.person]
-      person.name = action.name
-      person.width = getTextWidth(action.name, "16px Arial") + 40
+      if (action.image) {
+        person.imageURL = action.image.url
+        person.imageFile = action.image.file
+      }
+      if (action.name) {
+        person.name = action.name
+        const textWidth = getTextWidth(action.name, "16px Arial")
+        person.width = person.imageURL ? textWidth + 60 : textWidth
+      }
       draft.mode = { type: "viewing" }
       break
     case "DELETED_PERSON": {

@@ -45,19 +45,19 @@ export default function OptionsBubble() {
       onPointerDown={e => e.stopPropagation()}
     >
       <button 
-        className="bg-blue-400 hover:cursor-pointer hover:bg-blue-500 text-xl font-mono h-5.75"
+        className="bg-blue-400 hover:cursor-pointer hover:bg-blue-500 text-xl font-mono h-6 [image-rendering:pixelated]"
         onClick={() => {}}
       >
         Page
       </button>
       <button 
-        className="bg-green-400 hover:cursor-pointer hover:bg-green-500 text-xl font-mono h-5.75"
+        className="bg-green-400 hover:cursor-pointer hover:bg-green-500 text-xl font-mono h-6 [image-rendering:pixelated]"
         onClick={() => handleEdit(person.id)}
       >
         Edit
       </button>
       <button 
-        className="bg-red-400 hover:cursor-pointer hover:bg-red-500 text-xl font-mono h-5.75"
+        className="bg-red-400 hover:cursor-pointer hover:bg-red-500 text-xl font-mono h-6 [image-rendering:pixelated]"
         onClick={() => handleDelete(person.id)}
       >
         Delete
