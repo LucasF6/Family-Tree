@@ -1,8 +1,9 @@
 .modal {
-  width: min(90vw, 600px);
-  max-height: 90vh;
-  min-height: 30vh;
-  overflow: auto;
+  overflow: hidden;
   margin: auto;
-  padding: 5px
+  border-radius: 15px;
+}
+
+.modal::backdrop {
+  backdrop-filter: blur(4px)
 }

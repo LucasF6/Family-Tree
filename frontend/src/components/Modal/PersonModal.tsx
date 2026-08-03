@@ -2,10 +2,12 @@ import { ChangeEvent, useEffect, useState } from "react"
 import { Modal } from "./Modal"
 import { useEditorState, useEditorStateDispatch } from "@/components/FamilyTree"
 import { EditorAction } from "@/types/family-tree.types"
+import Cropper, { Point } from "react-easy-crop"
+import { CropperModal } from "./CropperModal"
 
 type Image = {
   url: string
-  file: File
+  blob: Blob
 }
 
 export function PersonModal() {
@@ -13,28 +15,34 @@ export function PersonModal() {
   const dispatch = useEditorStateDispatch()
   const [name, setName]= useState("")
   const [image, setImage] = useState<Image | null>(null)
+  const [precroppedImageURL, setPrecroppedImageURL] = useState<string | null>(null)
 
   const isOpen = mode.type === "person-settings"
 
   function reset() {
     setName("")
-    if (image !== null) {
-      // URL.revokeObjectURL(image.url)
-      setImage(null)
-    }
+    setImage(null)
   }
 
   function handleClose() {
     reset()
     if (isOpen) {
       // This occurs when modal was x'd or esc'd
+      if (image) {
+        URL.revokeObjectURL(image.url)
+      }
       dispatch({
         type: "CANCELED"
       })
-    } else {
-      // This occurs during a submit
-      
     }
+  }
+
+  function handleCloseCropper() {
+    if (!precroppedImageURL) {
+      return
+    }
+    URL.revokeObjectURL(precroppedImageURL)
+    setPrecroppedImageURL(null)
   }
 
   function handleNameChange(e: ChangeEvent<HTMLInputElement>) {
@@ -46,47 +54,65 @@ export function PersonModal() {
     if (!file) {
       return
     }
-    const url = URL.createObjectURL(file)
+    setPrecroppedImageURL(URL.createObjectURL(file))
+  }
+
+  function handleDone(blob: Blob) {
+    if (image) {
+      URL.revokeObjectURL(image.url)
+    }
     setImage({
-      file,
-      url
+      blob,
+      url: URL.createObjectURL(blob)
     })
+    setPrecroppedImageURL(null)
   }
 
   function handleSubmit() {
+    if (!isOpen) {
+      return
+    }
     let action: Extract<EditorAction, { type: "EDITED_PERSON" }> = { type: "EDITED_PERSON" }
     if (name !== "") {
       action.name = name
     }
     if (image !== null) {
+      const person = byId[mode.person]
+      if (person.imageBlob && person.imageURL) {
+        URL.revokeObjectURL(person.imageURL)
+      }
       action.image = image
     }
     dispatch(action)
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose}>
+    <Modal title={`Edit ${isOpen && byId[mode.person].name}`} isOpen={isOpen} onClose={handleClose}>
       {isOpen && (
-        <div className="flex flex-col">
-          <div>
-            <span>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center">
+            <span className="mr-2">
               Name:
             </span>
             <input 
-              className="m-2 border-2"
+              className="border-2 px-1.5"
               placeholder={byId[mode.person].name}
               value={name}
               onChange={handleNameChange}
             />
           </div>
-          <div>
-            <span>Image: </span>
+          <div className="flex items-center">
+            <span className="mr-2">Image: </span>
             <input 
-              className="file:m-2 file:border-2 file:px-1.5 file:py-0.5 file:cursor-pointer"
+              className="hidden"
+              id="file-input"
               type="file" 
               accept="image/*" 
               onChange={handleImageChange}
             />
+            <label htmlFor="file-input" className="border-2 bg-gray-400 px-1.5 cursor-pointer self-center">
+              Choose file
+            </label>
           </div>
           <div>
             {image && (
@@ -104,9 +130,9 @@ export function PersonModal() {
               submit
             </button>
           </div>
+          <CropperModal src={precroppedImageURL} onDone={handleDone} onClose={handleCloseCropper} />
         </div>
       )}
     </Modal>
   )
 }
-

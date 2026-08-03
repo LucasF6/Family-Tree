@@ -3,14 +3,16 @@ import { v4 } from "uuid"
 import { getConnections } from "../Draft/getConnections"
 import { getRelationshipIndex } from "./getRelationshipIndex"
 
-const padding  = 20
+const font = "16px Arial"
+const outerPadding = 4
+const textPadding = 16
 let canvas: HTMLCanvasElement
 let context: CanvasRenderingContext2D
-function getTextWidth(text: string, font: string): number {
+function getPersonWidth(text: string, font: string, hasPicture: boolean): number {
   canvas = canvas ?? document.createElement("canvas")
   context = context ?? canvas.getContext("2d")!
   context.font = font
-  return context.measureText(text).width + padding * 2;
+  return context.measureText(text).width + outerPadding * 2 + textPadding * 2 + (hasPicture ? 56 : 0)
 }
 
 function createRelationship(draft: EditorState, callback: (id: RelationshipId) => Relationship): RelationshipId {
@@ -272,12 +274,13 @@ export default function editorReducer(draft: EditorState, action: EditorAction):
       const person = draft.graph.peopleById[draft.mode.person]
       if (action.image) {
         person.imageURL = action.image.url
-        person.imageFile = action.image.file
+        person.imageBlob = action.image.file
       }
       if (action.name) {
         person.name = action.name
-        const textWidth = getTextWidth(action.name, "16px Arial")
-        person.width = person.imageURL ? textWidth + 60 : textWidth
+      }
+      if (action.image || action.name) {
+        person.width = getPersonWidth(person.name, font, !!person.imageURL)
       }
       draft.mode = { type: "viewing" }
       break

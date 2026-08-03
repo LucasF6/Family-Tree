@@ -201,8 +201,10 @@ export function Person({ mode, data, onMouseEnter, onMouseLeave }: PersonProps) 
         onLostPointerCapture={handleLostPointerCapture}
         ref={cardRef}
       >
-        {data.imageURL && <img src={data.imageURL} className="w-15 h-15 rounded-full"/>}
-        {data.name}
+        {data.imageURL && <img src={data.imageURL} className="w-14 h-14 rounded-full pointer-events-none"/>}
+        <span className="p-4">
+          {data.name}
+        </span>
       </div>
     </>
   )

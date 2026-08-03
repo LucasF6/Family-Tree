@@ -35,7 +35,7 @@ export type PersonData = PersonSpatialData & {
   name: string
   age?: number
   imageURL?: string
-  imageFile?: File
+  imageBlob?: Blob
   bio?: string
 }
 
@@ -206,7 +206,7 @@ export type EditorAction =
       name?: string
       image?: {
         url: string
-        file: File
+        blob: Blob
       }
     }
   | {

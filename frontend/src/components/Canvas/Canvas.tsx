@@ -1,7 +1,6 @@
 import { Dimensions, Position } from "@/types/family-tree.types";
 import { PointerEvent, useRef, useEffect, useState, WheelEvent } from "react";
-import { CanvasProvider, CoordinatesContext, CoordinatesContextValue, MousePositionContextValue, ViewportContext } from "./CanvasProvider";
-import KeyboardShortcuts from "../KeyboardShortcuts";
+import { CanvasProvider, CoordinatesContextValue, MousePositionContextValue } from "./CanvasProvider";
 import { useEditorState, useEditorStateDispatch } from "../FamilyTree";
 
 type Camera = {
@@ -18,6 +17,8 @@ type CanvasProps = {
 }
 
 const zoomFactor: number = 0.001
+const minZoom: number = 0.5
+const maxZoom: number = 2
 
 export default function Canvas({ children, overlay, keyboardShortcuts, disabled }: CanvasProps) {
   const { mode } = useEditorState()
@@ -28,6 +29,25 @@ export default function Canvas({ children, overlay, keyboardShortcuts, disabled 
   const mousePosition = useRef<Position>({ x: 0, y: 0 })
   const [camera, setCamera] = useState<Camera>({ panX: 0, panY: 0, zoom: 1 })
   const cameraRef = useRef<Camera>(camera)
+  
+  useEffect(() => {
+    cameraRef.current = camera
+  }, [camera])
+  
+  useEffect(() => {
+    if (!canvasRef.current) return
+
+    const observer = new ResizeObserver(([entry]) => {
+      setViewport({
+        width: entry.contentRect.width,
+        height: entry.contentRect.height
+      })
+    })
+
+    observer.observe(canvasRef.current)
+
+    return () => observer.disconnect()
+  }, [])
 
   const coordinates: CoordinatesContextValue = {
     screenToWorldLength(length: number): number {
@@ -51,25 +71,8 @@ export default function Canvas({ children, overlay, keyboardShortcuts, disabled 
     get: () => mousePosition.current
   }
 
-  useEffect(() => {
-    cameraRef.current = camera
-  }, [camera])
+  const blurred: boolean = mode.type === "person-settings"
   
-  useEffect(() => {
-    if (!canvasRef.current) return
-
-    const observer = new ResizeObserver(([entry]) => {
-      setViewport({
-        width: entry.contentRect.width,
-        height: entry.contentRect.height
-      })
-    })
-
-    observer.observe(canvasRef.current)
-
-    return () => observer.disconnect()
-  }, [])
-
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
     if (!disabled && e.button === 0) {
       if (mode.type === "options") {
@@ -109,7 +112,12 @@ export default function Canvas({ children, overlay, keyboardShortcuts, disabled 
 
   function handleWheel(e: WheelEvent<HTMLDivElement>) {
     setCamera(prev => {
-      const ratio = Math.exp(-e.deltaY * zoomFactor)
+      let ratio = Math.exp(-e.deltaY * zoomFactor)
+      if (prev.zoom * ratio < minZoom) {
+        ratio = minZoom / prev.zoom
+      } else if (prev.zoom * ratio > maxZoom) {
+        ratio = maxZoom / prev.zoom
+      }
       return {
         panX: e.clientX * (1 - ratio) + prev.panX * ratio,
         panY: e.clientY * (1 - ratio) + prev.panY * ratio,
@@ -136,12 +144,15 @@ export default function Canvas({ children, overlay, keyboardShortcuts, disabled 
         onWheel={handleWheel}
         onContextMenu={handleContextMenu}
         ref={canvasRef}
+        style={{
+          // filter: `blur(${blurred ? 4 : 0}px)`
+        }}
       >
         <div
-          className="w-full h-full "
+          className="w-full h-full"
           style={{
             transformOrigin: `0 0`,
-            transform: `translate(${camera.panX}px, ${camera.panY}px) scale(${camera.zoom})`
+            transform: `translate(${camera.panX}px, ${camera.panY}px) scale(${camera.zoom})`,
           }}
         >
           {children}
